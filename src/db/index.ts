@@ -1,4 +1,6 @@
+import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import * as schema from "./schema";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -6,10 +8,12 @@ if (!connectionString) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
-export const sql = postgres(connectionString);
+const client = postgres(connectionString);
+export const db = drizzle(client, { schema });
 
 export async function initDatabase() {
-  await sql`
+  // Create tables if they don't exist
+  await client`
     CREATE TABLE IF NOT EXISTS levels (
       uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       index INTEGER NOT NULL,
@@ -21,7 +25,7 @@ export async function initDatabase() {
     )
   `;
 
-  await sql`
+  await client`
     CREATE TABLE IF NOT EXISTS techniques (
       uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       level_uuid UUID REFERENCES levels(uuid) ON DELETE CASCADE,
@@ -33,7 +37,7 @@ export async function initDatabase() {
     )
   `;
 
-  await sql`
+  await client`
     CREATE TABLE IF NOT EXISTS learning (
       uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       technique_uuid UUID REFERENCES techniques(uuid) ON DELETE CASCADE,
@@ -46,7 +50,7 @@ export async function initDatabase() {
     )
   `;
 
-  await sql`
+  await client`
     CREATE TABLE IF NOT EXISTS boards (
       uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       level_uuid UUID REFERENCES levels(uuid) ON DELETE SET NULL,
@@ -59,7 +63,7 @@ export async function initDatabase() {
     )
   `;
 
-  await sql`
+  await client`
     CREATE TABLE IF NOT EXISTS dailies (
       uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       date DATE UNIQUE NOT NULL,
@@ -73,7 +77,7 @@ export async function initDatabase() {
     )
   `;
 
-  await sql`
+  await client`
     CREATE TABLE IF NOT EXISTS challenges (
       uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       board_uuid UUID REFERENCES boards(uuid) ON DELETE SET NULL,
@@ -90,5 +94,8 @@ export async function initDatabase() {
 }
 
 export async function closeDatabase() {
-  await sql.end();
+  await client.end();
 }
+
+// Re-export schema for convenience
+export * from "./schema";

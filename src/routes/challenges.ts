@@ -1,52 +1,69 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { sql } from "../db";
+import { eq, and, asc, desc, sql } from "drizzle-orm";
+import { db, challenges } from "../db";
 import { challengeCreateSchema, challengeUpdateSchema, uuidParamSchema } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
 
-const challenges = new Hono();
+const challengesRouter = new Hono();
 
 // GET all challenges (public)
-challenges.get("/", async (c) => {
+challengesRouter.get("/", async (c) => {
   const levelUuid = c.req.query("level_uuid");
   const difficulty = c.req.query("difficulty");
 
   let rows;
   if (levelUuid && difficulty) {
-    rows = await sql`
-      SELECT * FROM challenges
-      WHERE level_uuid = ${levelUuid} AND difficulty = ${parseInt(difficulty)}
-      ORDER BY difficulty ASC
-    `;
+    rows = await db.select().from(challenges)
+      .where(and(
+        eq(challenges.level_uuid, levelUuid),
+        eq(challenges.difficulty, parseInt(difficulty))
+      ))
+      .orderBy(asc(challenges.difficulty));
   } else if (levelUuid) {
-    rows = await sql`SELECT * FROM challenges WHERE level_uuid = ${levelUuid} ORDER BY difficulty ASC`;
+    rows = await db.select().from(challenges)
+      .where(eq(challenges.level_uuid, levelUuid))
+      .orderBy(asc(challenges.difficulty));
   } else if (difficulty) {
-    rows = await sql`SELECT * FROM challenges WHERE difficulty = ${parseInt(difficulty)} ORDER BY created_at DESC`;
+    rows = await db.select().from(challenges)
+      .where(eq(challenges.difficulty, parseInt(difficulty)))
+      .orderBy(desc(challenges.created_at));
   } else {
-    rows = await sql`SELECT * FROM challenges ORDER BY difficulty ASC, created_at DESC`;
+    rows = await db.select().from(challenges)
+      .orderBy(asc(challenges.difficulty), desc(challenges.created_at));
   }
 
   return c.json({ data: rows });
 });
 
 // GET random challenge (public)
-challenges.get("/random", async (c) => {
+challengesRouter.get("/random", async (c) => {
   const levelUuid = c.req.query("level_uuid");
   const difficulty = c.req.query("difficulty");
 
   let rows;
   if (levelUuid && difficulty) {
-    rows = await sql`
-      SELECT * FROM challenges
-      WHERE level_uuid = ${levelUuid} AND difficulty = ${parseInt(difficulty)}
-      ORDER BY RANDOM() LIMIT 1
-    `;
+    rows = await db.select().from(challenges)
+      .where(and(
+        eq(challenges.level_uuid, levelUuid),
+        eq(challenges.difficulty, parseInt(difficulty))
+      ))
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
   } else if (levelUuid) {
-    rows = await sql`SELECT * FROM challenges WHERE level_uuid = ${levelUuid} ORDER BY RANDOM() LIMIT 1`;
+    rows = await db.select().from(challenges)
+      .where(eq(challenges.level_uuid, levelUuid))
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
   } else if (difficulty) {
-    rows = await sql`SELECT * FROM challenges WHERE difficulty = ${parseInt(difficulty)} ORDER BY RANDOM() LIMIT 1`;
+    rows = await db.select().from(challenges)
+      .where(eq(challenges.difficulty, parseInt(difficulty)))
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
   } else {
-    rows = await sql`SELECT * FROM challenges ORDER BY RANDOM() LIMIT 1`;
+    rows = await db.select().from(challenges)
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
   }
 
   if (rows.length === 0) {
@@ -57,9 +74,9 @@ challenges.get("/random", async (c) => {
 });
 
 // GET one challenge by uuid (public)
-challenges.get("/:uuid", zValidator("param", uuidParamSchema), async (c) => {
+challengesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async (c) => {
   const { uuid } = c.req.valid("param");
-  const rows = await sql`SELECT * FROM challenges WHERE uuid = ${uuid}`;
+  const rows = await db.select().from(challenges).where(eq(challenges.uuid, uuid));
 
   if (rows.length === 0) {
     return c.json({ error: "Challenge not found" }, 404);
@@ -69,55 +86,51 @@ challenges.get("/:uuid", zValidator("param", uuidParamSchema), async (c) => {
 });
 
 // POST create challenge (protected)
-challenges.post("/", authMiddleware, zValidator("json", challengeCreateSchema), async (c) => {
+challengesRouter.post("/", authMiddleware, zValidator("json", challengeCreateSchema), async (c) => {
   const body = c.req.valid("json");
 
-  const rows = await sql`
-    INSERT INTO challenges (board_uuid, level_uuid, difficulty, board, solution)
-    VALUES (${body.board_uuid ?? null}, ${body.level_uuid ?? null}, ${body.difficulty}, ${body.board}, ${body.solution})
-    RETURNING *
-  `;
+  const rows = await db.insert(challenges).values({
+    board_uuid: body.board_uuid ?? null,
+    level_uuid: body.level_uuid ?? null,
+    difficulty: body.difficulty,
+    board: body.board,
+    solution: body.solution,
+  }).returning();
 
   return c.json({ data: rows[0] }, 201);
 });
 
 // PUT update challenge (protected)
-challenges.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema), zValidator("json", challengeUpdateSchema), async (c) => {
+challengesRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema), zValidator("json", challengeUpdateSchema), async (c) => {
   const { uuid } = c.req.valid("param");
   const body = c.req.valid("json");
 
-  const existing = await sql`SELECT * FROM challenges WHERE uuid = ${uuid}`;
+  const existing = await db.select().from(challenges).where(eq(challenges.uuid, uuid));
   if (existing.length === 0) {
     return c.json({ error: "Challenge not found" }, 404);
   }
 
-  const current = existing[0];
-  const updatedBoardUuid = body.board_uuid !== undefined ? body.board_uuid : current.board_uuid;
-  const updatedLevelUuid = body.level_uuid !== undefined ? body.level_uuid : current.level_uuid;
-  const updatedDifficulty = body.difficulty ?? current.difficulty;
-  const updatedBoard = body.board ?? current.board;
-  const updatedSolution = body.solution ?? current.solution;
-
-  const rows = await sql`
-    UPDATE challenges SET
-      board_uuid = ${updatedBoardUuid},
-      level_uuid = ${updatedLevelUuid},
-      difficulty = ${updatedDifficulty},
-      board = ${updatedBoard},
-      solution = ${updatedSolution},
-      updated_at = NOW()
-    WHERE uuid = ${uuid}
-    RETURNING *
-  `;
+  const current = existing[0]!;
+  const rows = await db.update(challenges)
+    .set({
+      board_uuid: body.board_uuid !== undefined ? body.board_uuid : current.board_uuid,
+      level_uuid: body.level_uuid !== undefined ? body.level_uuid : current.level_uuid,
+      difficulty: body.difficulty ?? current.difficulty,
+      board: body.board ?? current.board,
+      solution: body.solution ?? current.solution,
+      updated_at: new Date(),
+    })
+    .where(eq(challenges.uuid, uuid))
+    .returning();
 
   return c.json({ data: rows[0] });
 });
 
 // DELETE challenge (protected)
-challenges.delete("/:uuid", authMiddleware, zValidator("param", uuidParamSchema), async (c) => {
+challengesRouter.delete("/:uuid", authMiddleware, zValidator("param", uuidParamSchema), async (c) => {
   const { uuid } = c.req.valid("param");
 
-  const rows = await sql`DELETE FROM challenges WHERE uuid = ${uuid} RETURNING *`;
+  const rows = await db.delete(challenges).where(eq(challenges.uuid, uuid)).returning();
 
   if (rows.length === 0) {
     return c.json({ error: "Challenge not found" }, 404);
@@ -126,4 +139,4 @@ challenges.delete("/:uuid", authMiddleware, zValidator("param", uuidParamSchema)
   return c.json({ data: rows[0] });
 });
 
-export default challenges;
+export default challengesRouter;

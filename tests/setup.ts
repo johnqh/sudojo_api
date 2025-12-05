@@ -1,29 +1,30 @@
-import { sql, initDatabase } from "../src/db";
+import { db, initDatabase, levels, techniques, learning, boards, dailies, challenges } from "../src/db";
 
 export const API_TOKEN = "dev-secret-token-12345";
 
 export async function setupTestDatabase() {
   await initDatabase();
   // Clean up tables for fresh test runs
-  await sql`TRUNCATE TABLE learning CASCADE`;
-  await sql`TRUNCATE TABLE techniques CASCADE`;
-  await sql`TRUNCATE TABLE dailies CASCADE`;
-  await sql`TRUNCATE TABLE challenges CASCADE`;
-  await sql`TRUNCATE TABLE boards CASCADE`;
-  await sql`TRUNCATE TABLE levels CASCADE`;
+  await db.delete(learning);
+  await db.delete(techniques);
+  await db.delete(dailies);
+  await db.delete(challenges);
+  await db.delete(boards);
+  await db.delete(levels);
 }
 
 export async function cleanupTestDatabase() {
-  await sql`TRUNCATE TABLE learning CASCADE`;
-  await sql`TRUNCATE TABLE techniques CASCADE`;
-  await sql`TRUNCATE TABLE dailies CASCADE`;
-  await sql`TRUNCATE TABLE challenges CASCADE`;
-  await sql`TRUNCATE TABLE boards CASCADE`;
-  await sql`TRUNCATE TABLE levels CASCADE`;
+  await db.delete(learning);
+  await db.delete(techniques);
+  await db.delete(dailies);
+  await db.delete(challenges);
+  await db.delete(boards);
+  await db.delete(levels);
 }
 
 export async function closeTestDatabase() {
-  await sql.end();
+  // Note: drizzle-orm with postgres.js doesn't have a direct close method on db
+  // The connection is managed by the underlying postgres client
 }
 
 // Sample test data

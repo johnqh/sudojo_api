@@ -1,34 +1,43 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { sql } from "../db";
+import { eq, desc, sql } from "drizzle-orm";
+import { db, boards } from "../db";
 import { boardCreateSchema, boardUpdateSchema, uuidParamSchema } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
 
-const boards = new Hono();
+const boardsRouter = new Hono();
 
 // GET all boards (public)
-boards.get("/", async (c) => {
+boardsRouter.get("/", async (c) => {
   const levelUuid = c.req.query("level_uuid");
 
   let rows;
   if (levelUuid) {
-    rows = await sql`SELECT * FROM boards WHERE level_uuid = ${levelUuid} ORDER BY created_at DESC`;
+    rows = await db.select().from(boards)
+      .where(eq(boards.level_uuid, levelUuid))
+      .orderBy(desc(boards.created_at));
   } else {
-    rows = await sql`SELECT * FROM boards ORDER BY level_uuid, created_at DESC`;
+    rows = await db.select().from(boards)
+      .orderBy(boards.level_uuid, desc(boards.created_at));
   }
 
   return c.json({ data: rows });
 });
 
 // GET random board (public)
-boards.get("/random", async (c) => {
+boardsRouter.get("/random", async (c) => {
   const levelUuid = c.req.query("level_uuid");
 
   let rows;
   if (levelUuid) {
-    rows = await sql`SELECT * FROM boards WHERE level_uuid = ${levelUuid} ORDER BY RANDOM() LIMIT 1`;
+    rows = await db.select().from(boards)
+      .where(eq(boards.level_uuid, levelUuid))
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
   } else {
-    rows = await sql`SELECT * FROM boards ORDER BY RANDOM() LIMIT 1`;
+    rows = await db.select().from(boards)
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
   }
 
   if (rows.length === 0) {
@@ -39,9 +48,9 @@ boards.get("/random", async (c) => {
 });
 
 // GET one board by uuid (public)
-boards.get("/:uuid", zValidator("param", uuidParamSchema), async (c) => {
+boardsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async (c) => {
   const { uuid } = c.req.valid("param");
-  const rows = await sql`SELECT * FROM boards WHERE uuid = ${uuid}`;
+  const rows = await db.select().from(boards).where(eq(boards.uuid, uuid));
 
   if (rows.length === 0) {
     return c.json({ error: "Board not found" }, 404);
@@ -51,55 +60,51 @@ boards.get("/:uuid", zValidator("param", uuidParamSchema), async (c) => {
 });
 
 // POST create board (protected)
-boards.post("/", authMiddleware, zValidator("json", boardCreateSchema), async (c) => {
+boardsRouter.post("/", authMiddleware, zValidator("json", boardCreateSchema), async (c) => {
   const body = c.req.valid("json");
 
-  const rows = await sql`
-    INSERT INTO boards (level_uuid, symmetrical, board, solution, techniques)
-    VALUES (${body.level_uuid ?? null}, ${body.symmetrical}, ${body.board}, ${body.solution}, ${body.techniques})
-    RETURNING *
-  `;
+  const rows = await db.insert(boards).values({
+    level_uuid: body.level_uuid ?? null,
+    symmetrical: body.symmetrical,
+    board: body.board,
+    solution: body.solution,
+    techniques: body.techniques,
+  }).returning();
 
   return c.json({ data: rows[0] }, 201);
 });
 
 // PUT update board (protected)
-boards.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema), zValidator("json", boardUpdateSchema), async (c) => {
+boardsRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema), zValidator("json", boardUpdateSchema), async (c) => {
   const { uuid } = c.req.valid("param");
   const body = c.req.valid("json");
 
-  const existing = await sql`SELECT * FROM boards WHERE uuid = ${uuid}`;
+  const existing = await db.select().from(boards).where(eq(boards.uuid, uuid));
   if (existing.length === 0) {
     return c.json({ error: "Board not found" }, 404);
   }
 
-  const current = existing[0];
-  const updatedLevelUuid = body.level_uuid !== undefined ? body.level_uuid : current.level_uuid;
-  const updatedSymmetrical = body.symmetrical ?? current.symmetrical;
-  const updatedBoard = body.board ?? current.board;
-  const updatedSolution = body.solution ?? current.solution;
-  const updatedTechniques = body.techniques ?? current.techniques;
-
-  const rows = await sql`
-    UPDATE boards SET
-      level_uuid = ${updatedLevelUuid},
-      symmetrical = ${updatedSymmetrical},
-      board = ${updatedBoard},
-      solution = ${updatedSolution},
-      techniques = ${updatedTechniques},
-      updated_at = NOW()
-    WHERE uuid = ${uuid}
-    RETURNING *
-  `;
+  const current = existing[0]!;
+  const rows = await db.update(boards)
+    .set({
+      level_uuid: body.level_uuid !== undefined ? body.level_uuid : current.level_uuid,
+      symmetrical: body.symmetrical ?? current.symmetrical,
+      board: body.board ?? current.board,
+      solution: body.solution ?? current.solution,
+      techniques: body.techniques ?? current.techniques,
+      updated_at: new Date(),
+    })
+    .where(eq(boards.uuid, uuid))
+    .returning();
 
   return c.json({ data: rows[0] });
 });
 
 // DELETE board (protected)
-boards.delete("/:uuid", authMiddleware, zValidator("param", uuidParamSchema), async (c) => {
+boardsRouter.delete("/:uuid", authMiddleware, zValidator("param", uuidParamSchema), async (c) => {
   const { uuid } = c.req.valid("param");
 
-  const rows = await sql`DELETE FROM boards WHERE uuid = ${uuid} RETURNING *`;
+  const rows = await db.delete(boards).where(eq(boards.uuid, uuid)).returning();
 
   if (rows.length === 0) {
     return c.json({ error: "Board not found" }, 404);
@@ -108,4 +113,4 @@ boards.delete("/:uuid", authMiddleware, zValidator("param", uuidParamSchema), as
   return c.json({ data: rows[0] });
 });
 
-export default boards;
+export default boardsRouter;
