@@ -4,6 +4,7 @@ import { eq, asc } from "drizzle-orm";
 import { db, techniques } from "../db";
 import { techniqueCreateSchema, techniqueUpdateSchema, uuidParamSchema } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
+import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const techniquesRouter = new Hono();
 
@@ -21,7 +22,7 @@ techniquesRouter.get("/", async (c) => {
       .orderBy(asc(techniques.level_uuid), asc(techniques.index));
   }
 
-  return c.json({ data: rows });
+  return c.json(successResponse(rows));
 });
 
 // GET one technique by uuid (public)
@@ -30,10 +31,10 @@ techniquesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async (c) =
   const rows = await db.select().from(techniques).where(eq(techniques.uuid, uuid));
 
   if (rows.length === 0) {
-    return c.json({ error: "Technique not found" }, 404);
+    return c.json(errorResponse("Technique not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // POST create technique (protected)
@@ -47,7 +48,7 @@ techniquesRouter.post("/", authMiddleware, zValidator("json", techniqueCreateSch
     text: body.text,
   }).returning();
 
-  return c.json({ data: rows[0] }, 201);
+  return c.json(successResponse(rows[0]), 201);
 });
 
 // PUT update technique (protected)
@@ -57,7 +58,7 @@ techniquesRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSche
 
   const existing = await db.select().from(techniques).where(eq(techniques.uuid, uuid));
   if (existing.length === 0) {
-    return c.json({ error: "Technique not found" }, 404);
+    return c.json(errorResponse("Technique not found"), 404);
   }
 
   const current = existing[0]!;
@@ -72,7 +73,7 @@ techniquesRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSche
     .where(eq(techniques.uuid, uuid))
     .returning();
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // DELETE technique (protected)
@@ -82,10 +83,10 @@ techniquesRouter.delete("/:uuid", authMiddleware, zValidator("param", uuidParamS
   const rows = await db.delete(techniques).where(eq(techniques.uuid, uuid)).returning();
 
   if (rows.length === 0) {
-    return c.json({ error: "Technique not found" }, 404);
+    return c.json(errorResponse("Technique not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 export default techniquesRouter;

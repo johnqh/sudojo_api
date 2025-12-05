@@ -4,13 +4,14 @@ import { eq, desc, sql } from "drizzle-orm";
 import { db, dailies } from "../db";
 import { dailyCreateSchema, dailyUpdateSchema, uuidParamSchema, dateParamSchema } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
+import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const dailiesRouter = new Hono();
 
 // GET all dailies (public)
 dailiesRouter.get("/", async (c) => {
   const rows = await db.select().from(dailies).orderBy(desc(dailies.date));
-  return c.json({ data: rows });
+  return c.json(successResponse(rows));
 });
 
 // GET random daily (public)
@@ -20,10 +21,10 @@ dailiesRouter.get("/random", async (c) => {
     .limit(1);
 
   if (rows.length === 0) {
-    return c.json({ error: "No dailies found" }, 404);
+    return c.json(errorResponse("No dailies found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // GET today's daily (public)
@@ -32,10 +33,10 @@ dailiesRouter.get("/today", async (c) => {
   const rows = await db.select().from(dailies).where(eq(dailies.date, today));
 
   if (rows.length === 0) {
-    return c.json({ error: "No daily puzzle for today" }, 404);
+    return c.json(errorResponse("No daily puzzle for today"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // GET daily by date (public)
@@ -44,10 +45,10 @@ dailiesRouter.get("/date/:date", zValidator("param", dateParamSchema), async (c)
   const rows = await db.select().from(dailies).where(eq(dailies.date, date));
 
   if (rows.length === 0) {
-    return c.json({ error: "Daily not found for this date" }, 404);
+    return c.json(errorResponse("Daily not found for this date"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // GET one daily by uuid (public)
@@ -56,10 +57,10 @@ dailiesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async (c) => {
   const rows = await db.select().from(dailies).where(eq(dailies.uuid, uuid));
 
   if (rows.length === 0) {
-    return c.json({ error: "Daily not found" }, 404);
+    return c.json(errorResponse("Daily not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // POST create daily (protected)
@@ -75,7 +76,7 @@ dailiesRouter.post("/", authMiddleware, zValidator("json", dailyCreateSchema), a
     solution: body.solution,
   }).returning();
 
-  return c.json({ data: rows[0] }, 201);
+  return c.json(successResponse(rows[0]), 201);
 });
 
 // PUT update daily (protected)
@@ -85,7 +86,7 @@ dailiesRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema)
 
   const existing = await db.select().from(dailies).where(eq(dailies.uuid, uuid));
   if (existing.length === 0) {
-    return c.json({ error: "Daily not found" }, 404);
+    return c.json(errorResponse("Daily not found"), 404);
   }
 
   const current = existing[0]!;
@@ -102,7 +103,7 @@ dailiesRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema)
     .where(eq(dailies.uuid, uuid))
     .returning();
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // DELETE daily (protected)
@@ -112,10 +113,10 @@ dailiesRouter.delete("/:uuid", authMiddleware, zValidator("param", uuidParamSche
   const rows = await db.delete(dailies).where(eq(dailies.uuid, uuid)).returning();
 
   if (rows.length === 0) {
-    return c.json({ error: "Daily not found" }, 404);
+    return c.json(errorResponse("Daily not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 export default dailiesRouter;

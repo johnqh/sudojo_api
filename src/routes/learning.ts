@@ -4,6 +4,7 @@ import { eq, and, asc } from "drizzle-orm";
 import { db, learning } from "../db";
 import { learningCreateSchema, learningUpdateSchema, uuidParamSchema } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
+import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const learningRouter = new Hono();
 
@@ -33,7 +34,7 @@ learningRouter.get("/", async (c) => {
       .orderBy(asc(learning.technique_uuid), asc(learning.index));
   }
 
-  return c.json({ data: rows });
+  return c.json(successResponse(rows));
 });
 
 // GET one learning entry by uuid (public)
@@ -42,10 +43,10 @@ learningRouter.get("/:uuid", zValidator("param", uuidParamSchema), async (c) => 
   const rows = await db.select().from(learning).where(eq(learning.uuid, uuid));
 
   if (rows.length === 0) {
-    return c.json({ error: "Learning entry not found" }, 404);
+    return c.json(errorResponse("Learning entry not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // POST create learning entry (protected)
@@ -60,7 +61,7 @@ learningRouter.post("/", authMiddleware, zValidator("json", learningCreateSchema
     image_url: body.image_url ?? null,
   }).returning();
 
-  return c.json({ data: rows[0] }, 201);
+  return c.json(successResponse(rows[0]), 201);
 });
 
 // PUT update learning entry (protected)
@@ -70,7 +71,7 @@ learningRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema
 
   const existing = await db.select().from(learning).where(eq(learning.uuid, uuid));
   if (existing.length === 0) {
-    return c.json({ error: "Learning entry not found" }, 404);
+    return c.json(errorResponse("Learning entry not found"), 404);
   }
 
   const current = existing[0]!;
@@ -86,7 +87,7 @@ learningRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema
     .where(eq(learning.uuid, uuid))
     .returning();
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // DELETE learning entry (protected)
@@ -96,10 +97,10 @@ learningRouter.delete("/:uuid", authMiddleware, zValidator("param", uuidParamSch
   const rows = await db.delete(learning).where(eq(learning.uuid, uuid)).returning();
 
   if (rows.length === 0) {
-    return c.json({ error: "Learning entry not found" }, 404);
+    return c.json(errorResponse("Learning entry not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 export default learningRouter;

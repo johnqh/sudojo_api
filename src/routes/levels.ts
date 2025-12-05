@@ -4,13 +4,14 @@ import { eq, asc } from "drizzle-orm";
 import { db, levels } from "../db";
 import { levelCreateSchema, levelUpdateSchema, uuidParamSchema } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
+import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const levelsRouter = new Hono();
 
 // GET all levels (public)
 levelsRouter.get("/", async (c) => {
   const rows = await db.select().from(levels).orderBy(asc(levels.index));
-  return c.json({ data: rows });
+  return c.json(successResponse(rows));
 });
 
 // GET one level by uuid (public)
@@ -19,10 +20,10 @@ levelsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async (c) => {
   const rows = await db.select().from(levels).where(eq(levels.uuid, uuid));
 
   if (rows.length === 0) {
-    return c.json({ error: "Level not found" }, 404);
+    return c.json(errorResponse("Level not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // POST create level (protected)
@@ -36,7 +37,7 @@ levelsRouter.post("/", authMiddleware, zValidator("json", levelCreateSchema), as
     requires_subscription: body.requires_subscription,
   }).returning();
 
-  return c.json({ data: rows[0] }, 201);
+  return c.json(successResponse(rows[0]), 201);
 });
 
 // PUT update level (protected)
@@ -47,7 +48,7 @@ levelsRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema),
   // Check if level exists
   const existing = await db.select().from(levels).where(eq(levels.uuid, uuid));
   if (existing.length === 0) {
-    return c.json({ error: "Level not found" }, 404);
+    return c.json(errorResponse("Level not found"), 404);
   }
 
   const current = existing[0]!;
@@ -62,7 +63,7 @@ levelsRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema),
     .where(eq(levels.uuid, uuid))
     .returning();
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // DELETE level (protected)
@@ -72,10 +73,10 @@ levelsRouter.delete("/:uuid", authMiddleware, zValidator("param", uuidParamSchem
   const rows = await db.delete(levels).where(eq(levels.uuid, uuid)).returning();
 
   if (rows.length === 0) {
-    return c.json({ error: "Level not found" }, 404);
+    return c.json(errorResponse("Level not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 export default levelsRouter;

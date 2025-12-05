@@ -74,8 +74,8 @@ describe("Authentication Middleware", () => {
     it("should allow health check without authentication", async () => {
       const res = await app.request("/");
       expect(res.status).toBe(200);
-      const body = await res.json() as { name: string; version: string; status: string };
-      expect(body.name).toBe("Sudojo API");
+      const body = await res.json() as ApiResponse<{ name: string; version: string; status: string }>;
+      expect(body.data?.name).toBe("Sudojo API");
     });
   });
 });

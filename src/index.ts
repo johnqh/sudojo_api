@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { initDatabase } from "./db";
 import routes from "./routes";
+import { successResponse } from "@sudobility/sudojo_types";
 
 const app = new Hono();
 
@@ -12,11 +13,11 @@ app.use("*", cors());
 
 // Health check
 app.get("/", (c) => {
-  return c.json({
+  return c.json(successResponse({
     name: "Sudojo API",
     version: "1.0.0",
     status: "healthy",
-  });
+  }));
 });
 
 // API routes

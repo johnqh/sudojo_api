@@ -4,6 +4,7 @@ import { eq, and, asc, desc, sql } from "drizzle-orm";
 import { db, challenges } from "../db";
 import { challengeCreateSchema, challengeUpdateSchema, uuidParamSchema } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
+import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const challengesRouter = new Hono();
 
@@ -33,7 +34,7 @@ challengesRouter.get("/", async (c) => {
       .orderBy(asc(challenges.difficulty), desc(challenges.created_at));
   }
 
-  return c.json({ data: rows });
+  return c.json(successResponse(rows));
 });
 
 // GET random challenge (public)
@@ -67,10 +68,10 @@ challengesRouter.get("/random", async (c) => {
   }
 
   if (rows.length === 0) {
-    return c.json({ error: "No challenges found" }, 404);
+    return c.json(errorResponse("No challenges found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // GET one challenge by uuid (public)
@@ -79,10 +80,10 @@ challengesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async (c) =
   const rows = await db.select().from(challenges).where(eq(challenges.uuid, uuid));
 
   if (rows.length === 0) {
-    return c.json({ error: "Challenge not found" }, 404);
+    return c.json(errorResponse("Challenge not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // POST create challenge (protected)
@@ -97,7 +98,7 @@ challengesRouter.post("/", authMiddleware, zValidator("json", challengeCreateSch
     solution: body.solution,
   }).returning();
 
-  return c.json({ data: rows[0] }, 201);
+  return c.json(successResponse(rows[0]), 201);
 });
 
 // PUT update challenge (protected)
@@ -107,7 +108,7 @@ challengesRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSche
 
   const existing = await db.select().from(challenges).where(eq(challenges.uuid, uuid));
   if (existing.length === 0) {
-    return c.json({ error: "Challenge not found" }, 404);
+    return c.json(errorResponse("Challenge not found"), 404);
   }
 
   const current = existing[0]!;
@@ -123,7 +124,7 @@ challengesRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSche
     .where(eq(challenges.uuid, uuid))
     .returning();
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // DELETE challenge (protected)
@@ -133,10 +134,10 @@ challengesRouter.delete("/:uuid", authMiddleware, zValidator("param", uuidParamS
   const rows = await db.delete(challenges).where(eq(challenges.uuid, uuid)).returning();
 
   if (rows.length === 0) {
-    return c.json({ error: "Challenge not found" }, 404);
+    return c.json(errorResponse("Challenge not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 export default challengesRouter;

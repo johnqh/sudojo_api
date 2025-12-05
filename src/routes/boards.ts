@@ -4,6 +4,7 @@ import { eq, desc, sql } from "drizzle-orm";
 import { db, boards } from "../db";
 import { boardCreateSchema, boardUpdateSchema, uuidParamSchema } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
+import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const boardsRouter = new Hono();
 
@@ -21,7 +22,7 @@ boardsRouter.get("/", async (c) => {
       .orderBy(boards.level_uuid, desc(boards.created_at));
   }
 
-  return c.json({ data: rows });
+  return c.json(successResponse(rows));
 });
 
 // GET random board (public)
@@ -41,10 +42,10 @@ boardsRouter.get("/random", async (c) => {
   }
 
   if (rows.length === 0) {
-    return c.json({ error: "No boards found" }, 404);
+    return c.json(errorResponse("No boards found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // GET one board by uuid (public)
@@ -53,10 +54,10 @@ boardsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async (c) => {
   const rows = await db.select().from(boards).where(eq(boards.uuid, uuid));
 
   if (rows.length === 0) {
-    return c.json({ error: "Board not found" }, 404);
+    return c.json(errorResponse("Board not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // POST create board (protected)
@@ -71,7 +72,7 @@ boardsRouter.post("/", authMiddleware, zValidator("json", boardCreateSchema), as
     techniques: body.techniques,
   }).returning();
 
-  return c.json({ data: rows[0] }, 201);
+  return c.json(successResponse(rows[0]), 201);
 });
 
 // PUT update board (protected)
@@ -81,7 +82,7 @@ boardsRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema),
 
   const existing = await db.select().from(boards).where(eq(boards.uuid, uuid));
   if (existing.length === 0) {
-    return c.json({ error: "Board not found" }, 404);
+    return c.json(errorResponse("Board not found"), 404);
   }
 
   const current = existing[0]!;
@@ -97,7 +98,7 @@ boardsRouter.put("/:uuid", authMiddleware, zValidator("param", uuidParamSchema),
     .where(eq(boards.uuid, uuid))
     .returning();
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 // DELETE board (protected)
@@ -107,10 +108,10 @@ boardsRouter.delete("/:uuid", authMiddleware, zValidator("param", uuidParamSchem
   const rows = await db.delete(boards).where(eq(boards.uuid, uuid)).returning();
 
   if (rows.length === 0) {
-    return c.json({ error: "Board not found" }, 404);
+    return c.json(errorResponse("Board not found"), 404);
   }
 
-  return c.json({ data: rows[0] });
+  return c.json(successResponse(rows[0]));
 });
 
 export default boardsRouter;
