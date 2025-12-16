@@ -75,7 +75,10 @@ export const dailyCreateSchema = z.object({
 });
 
 export const dailyUpdateSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   board_uuid: z.string().uuid().nullable().optional(),
   level_uuid: z.string().uuid().nullable().optional(),
   techniques: z.number().int().optional(),
@@ -107,4 +110,9 @@ export const uuidParamSchema = z.object({
 
 export const dateParamSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+// User param schema (Firebase user IDs are typically 28 characters)
+export const userIdParamSchema = z.object({
+  userId: z.string().min(1).max(128),
 });

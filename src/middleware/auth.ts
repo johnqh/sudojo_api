@@ -1,10 +1,7 @@
 import type { Context, Next } from "hono";
+import { getRequiredEnv } from "../lib/env-helper";
 
-const API_ACCESS_TOKEN = process.env.API_ACCESS_TOKEN;
-
-if (!API_ACCESS_TOKEN) {
-  throw new Error("API_ACCESS_TOKEN environment variable is required");
-}
+const API_ACCESS_TOKEN = getRequiredEnv("API_ACCESS_TOKEN");
 
 export async function authMiddleware(c: Context, next: Next) {
   const authHeader = c.req.header("Authorization");
@@ -16,7 +13,10 @@ export async function authMiddleware(c: Context, next: Next) {
   const [type, token] = authHeader.split(" ");
 
   if (type !== "Bearer" || !token) {
-    return c.json({ error: "Invalid authorization format. Use: Bearer <token>" }, 401);
+    return c.json(
+      { error: "Invalid authorization format. Use: Bearer <token>" },
+      401
+    );
   }
 
   if (token !== API_ACCESS_TOKEN) {

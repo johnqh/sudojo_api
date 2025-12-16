@@ -5,6 +5,7 @@ import learningRouter from "./learning";
 import boardsRouter from "./boards";
 import dailiesRouter from "./dailies";
 import challengesRouter from "./challenges";
+import usersRouter from "./users";
 
 const routes = new Hono();
 
@@ -14,5 +15,6 @@ routes.route("/learning", learningRouter);
 routes.route("/boards", boardsRouter);
 routes.route("/dailies", dailiesRouter);
 routes.route("/challenges", challengesRouter);
+routes.route("/users", usersRouter);
 
 export default routes;

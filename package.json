@@ -13,7 +13,12 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^24.10.1",
-    "drizzle-kit": "^0.31.8"
+    "@typescript-eslint/eslint-plugin": "^8.50.0",
+    "@typescript-eslint/parser": "^8.50.0",
+    "drizzle-kit": "^0.31.8",
+    "eslint": "^9.39.2",
+    "eslint-plugin-import": "^2.32.0",
+    "prettier": "^3.7.4"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -23,6 +28,7 @@
     "@sudobility/sudojo_types": "^1.0.0",
     "@sudobility/types": "^1.0.0",
     "drizzle-orm": "^0.45.0",
+    "firebase-admin": "^13.6.0",
     "hono": "^4.10.7",
     "postgres": "^3.4.7",
     "zod": "^4.1.13"

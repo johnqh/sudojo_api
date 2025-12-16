@@ -4,6 +4,7 @@ import { logger } from "hono/logger";
 import { initDatabase } from "./db";
 import routes from "./routes";
 import { successResponse } from "@sudobility/sudojo_types";
+import { getEnv } from "./lib/env-helper";
 
 const app = new Hono();
 
@@ -12,25 +13,27 @@ app.use("*", logger());
 app.use("*", cors());
 
 // Health check
-app.get("/", (c) => {
-  return c.json(successResponse({
-    name: "Sudojo API",
-    version: "1.0.0",
-    status: "healthy",
-  }));
+app.get("/", c => {
+  return c.json(
+    successResponse({
+      name: "Sudojo API",
+      version: "1.0.0",
+      status: "healthy",
+    })
+  );
 });
 
 // API routes
 app.route("/api/v1", routes);
 
 // Initialize database and start server
-const port = parseInt(process.env.PORT || "3000");
+const port = parseInt(getEnv("PORT", "3000")!);
 
 initDatabase()
   .then(() => {
     console.log(`Server running on http://localhost:${port}`);
   })
-  .catch((err) => {
+  .catch(err => {
     console.error("Failed to initialize database:", err);
     process.exit(1);
   });
