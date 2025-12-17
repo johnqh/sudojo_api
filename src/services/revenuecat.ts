@@ -1,20 +1,12 @@
 import { getRequiredEnv } from "../lib/env-helper";
+import type {
+  RevenueCatEntitlement,
+  SubscriptionResult,
+} from "@sudobility/sudojo_types";
 
 const REVENUECAT_API_KEY = getRequiredEnv("REVENUECAT_API_KEY");
 
 const REVENUECAT_BASE_URL = "https://api.revenuecat.com/v1";
-
-export interface RevenueCatEntitlement {
-  expires_date: string | null;
-  grace_period_expires_date: string | null;
-  product_identifier: string;
-  purchase_date: string;
-}
-
-export interface SubscriptionResult {
-  hasSubscription: boolean;
-  entitlement: RevenueCatEntitlement | null;
-}
 
 interface RevenueCatSubscriberResponse {
   subscriber: {

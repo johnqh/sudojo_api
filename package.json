@@ -29,8 +29,8 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.5",
-    "@sudobility/sudojo_types": "^1.0.0",
-    "@sudobility/types": "^1.0.0",
+    "@sudobility/sudojo_types": "^1.1.0",
+    "@sudobility/types": "^1.9.31",
     "drizzle-orm": "^0.45.0",
     "firebase-admin": "^13.6.0",
     "hono": "^4.10.7",

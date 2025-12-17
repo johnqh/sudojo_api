@@ -5,8 +5,8 @@
       "name": "sudojo_api",
       "dependencies": {
         "@hono/zod-validator": "^0.7.5",
-        "@sudobility/sudojo_types": "^1.0.0",
-        "@sudobility/types": "^1.0.0",
+        "@sudobility/sudojo_types": "^1.1.0",
+        "@sudobility/types": "^1.9.31",
         "drizzle-orm": "^0.45.0",
         "firebase-admin": "^13.6.0",
         "hono": "^4.10.7",
@@ -175,7 +175,7 @@
 
     "@rtsao/scc": ["@rtsao/scc@1.1.0", "", {}, "sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g=="],
 
-    "@sudobility/sudojo_types": ["@sudobility/sudojo_types@1.0.0", "", { "peerDependencies": { "@sudobility/types": "^1.0.0" } }, "sha512-QnSa+JOkVWb/07iwhy9C+rlfG1mwgFTwTFMM9xbPW11vEbFj3uAxW3cGLUjzGQSogorXXZtqDdFICbE/FT4VKA=="],
+    "@sudobility/sudojo_types": ["@sudobility/sudojo_types@1.1.0", "", { "peerDependencies": { "@sudobility/types": "^1.0.0" } }, "sha512-majDcTF6OezdkLQy7paGolCmR0S+ss8n5hP2s49EKYGoyTnrNit4V+9sLZLhZ7NmWbayFIAn1DEB3qFsQJkHnQ=="],
 
     "@sudobility/types": ["@sudobility/types@1.9.31", "", {}, "sha512-3wZw/QvNxvNZTVSygk3vdx3bAn0QKjnBSqjS1tnXlfnZa4uyaTfy9We79rPnKjyk2gpANskIKOUZztEBrqEmTw=="],
 
