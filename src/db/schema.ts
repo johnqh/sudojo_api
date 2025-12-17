@@ -89,3 +89,11 @@ export const challenges = pgTable("challenges", {
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 });
+
+export const accessLogs = pgTable("access_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: varchar("user_id", { length: 128 }).notNull(),
+  endpoint: varchar("endpoint", { length: 50 }).notNull(),
+  access_date: date("access_date").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});

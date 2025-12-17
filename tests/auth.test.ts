@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { app } from "../src/index";
-import { setupTestDatabase, closeTestDatabase, API_TOKEN } from "./setup";
+import {
+  setupTestDatabase,
+  closeTestDatabase,
+  API_TOKEN,
+  getAuthHeaders,
+} from "./setup";
 import type { ApiResponse, LevelData } from "./types";
 
 describe("Authentication Middleware", () => {
@@ -20,7 +25,7 @@ describe("Authentication Middleware", () => {
         body: JSON.stringify({ index: 1, title: "Test" }),
       });
       expect(res.status).toBe(401);
-      const body = await res.json() as ApiResponse;
+      const body = (await res.json()) as ApiResponse;
       expect(body.error).toBe("Authorization header required");
     });
 
@@ -34,25 +39,24 @@ describe("Authentication Middleware", () => {
         body: JSON.stringify({ index: 1, title: "Test" }),
       });
       expect(res.status).toBe(401);
-      const body = await res.json() as ApiResponse;
-      expect(body.error).toBe("Invalid authorization format. Use: Bearer <token>");
+      const body = (await res.json()) as ApiResponse;
+      expect(body.error).toBe(
+        "Invalid authorization format. Use: Bearer <token>"
+      );
     });
 
-    it("should reject request with wrong token", async () => {
+    it("should reject GET request with wrong token", async () => {
       const res = await app.request("/api/v1/levels", {
-        method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: "Bearer wrong-token",
         },
-        body: JSON.stringify({ index: 1, title: "Test" }),
       });
-      expect(res.status).toBe(403);
-      const body = await res.json() as ApiResponse;
-      expect(body.error).toBe("Invalid access token");
+      expect(res.status).toBe(401);
+      const body = (await res.json()) as ApiResponse;
+      expect(body.error).toBe("Invalid or expired Firebase token");
     });
 
-    it("should accept request with valid token", async () => {
+    it("should accept request with valid admin token", async () => {
       const res = await app.request("/api/v1/levels", {
         method: "POST",
         headers: {
@@ -63,18 +67,29 @@ describe("Authentication Middleware", () => {
       });
       expect(res.status).toBe(201);
     });
+
+    it("should accept GET request with valid Firebase token", async () => {
+      const res = await app.request("/api/v1/levels", {
+        headers: getAuthHeaders(),
+      });
+      expect(res.status).toBe(200);
+    });
   });
 
-  describe("Public endpoints", () => {
-    it("should allow GET requests without authentication", async () => {
+  describe("Access Control", () => {
+    it("should require authentication for GET requests", async () => {
       const res = await app.request("/api/v1/levels");
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(401);
     });
 
     it("should allow health check without authentication", async () => {
       const res = await app.request("/");
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<{ name: string; version: string; status: string }>;
+      const body = (await res.json()) as ApiResponse<{
+        name: string;
+        version: string;
+        status: string;
+      }>;
       expect(body.data?.name).toBe("Sudojo API");
     });
   });

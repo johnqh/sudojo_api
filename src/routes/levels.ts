@@ -8,31 +8,39 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
+import { createAccessControlMiddleware } from "../middleware/accessControl";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const levelsRouter = new Hono();
+const accessControl = createAccessControlMiddleware("levels");
 
-// GET all levels (public)
-levelsRouter.get("/", async c => {
+// GET all levels (requires auth + access control)
+levelsRouter.get("/", accessControl, async c => {
   const rows = await db.select().from(levels).orderBy(asc(levels.index));
   return c.json(successResponse(rows));
 });
 
-// GET one level by uuid (public)
-levelsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
-  const { uuid } = c.req.valid("param");
-  const rows = await db.select().from(levels).where(eq(levels.uuid, uuid));
+// GET one level by uuid (requires auth + access control)
+levelsRouter.get(
+  "/:uuid",
+  accessControl,
+  zValidator("param", uuidParamSchema),
+  async c => {
+    const { uuid } = c.req.valid("param");
+    const rows = await db.select().from(levels).where(eq(levels.uuid, uuid));
 
-  if (rows.length === 0) {
-    return c.json(errorResponse("Level not found"), 404);
+    if (rows.length === 0) {
+      return c.json(errorResponse("Level not found"), 404);
+    }
+
+    return c.json(successResponse(rows[0]));
   }
+);
 
-  return c.json(successResponse(rows[0]));
-});
-
-// POST create level (protected)
+// POST create level (requires auth + access control + admin)
 levelsRouter.post(
   "/",
+  accessControl,
   authMiddleware,
   zValidator("json", levelCreateSchema),
   async c => {
@@ -52,9 +60,10 @@ levelsRouter.post(
   }
 );
 
-// PUT update level (protected)
+// PUT update level (requires auth + access control + admin)
 levelsRouter.put(
   "/:uuid",
+  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", levelUpdateSchema),
@@ -89,9 +98,10 @@ levelsRouter.put(
   }
 );
 
-// DELETE level (protected)
+// DELETE level (requires auth + access control + admin)
 levelsRouter.delete(
   "/:uuid",
+  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {

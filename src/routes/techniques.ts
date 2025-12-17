@@ -8,12 +8,14 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
+import { createAccessControlMiddleware } from "../middleware/accessControl";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const techniquesRouter = new Hono();
+const accessControl = createAccessControlMiddleware("techniques");
 
-// GET all techniques (public)
-techniquesRouter.get("/", async c => {
+// GET all techniques (requires auth + access control)
+techniquesRouter.get("/", accessControl, async c => {
   const levelUuid = c.req.query("level_uuid");
 
   let rows;
@@ -33,9 +35,10 @@ techniquesRouter.get("/", async c => {
   return c.json(successResponse(rows));
 });
 
-// GET one technique by uuid (public)
+// GET one technique by uuid (requires auth + access control)
 techniquesRouter.get(
   "/:uuid",
+  accessControl,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");
@@ -52,9 +55,10 @@ techniquesRouter.get(
   }
 );
 
-// POST create technique (protected)
+// POST create technique (requires auth + access control + admin)
 techniquesRouter.post(
   "/",
+  accessControl,
   authMiddleware,
   zValidator("json", techniqueCreateSchema),
   async c => {
@@ -74,9 +78,10 @@ techniquesRouter.post(
   }
 );
 
-// PUT update technique (protected)
+// PUT update technique (requires auth + access control + admin)
 techniquesRouter.put(
   "/:uuid",
+  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", techniqueUpdateSchema),
@@ -109,9 +114,10 @@ techniquesRouter.put(
   }
 );
 
-// DELETE technique (protected)
+// DELETE technique (requires auth + access control + admin)
 techniquesRouter.delete(
   "/:uuid",
+  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {

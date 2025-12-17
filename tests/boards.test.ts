@@ -1,6 +1,21 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from "bun:test";
 import { app } from "../src/index";
-import { setupTestDatabase, cleanupTestDatabase, closeTestDatabase, API_TOKEN, sampleBoard, sampleSolution } from "./setup";
+import {
+  setupTestDatabase,
+  cleanupTestDatabase,
+  closeTestDatabase,
+  API_TOKEN,
+  sampleBoard,
+  sampleSolution,
+  getAuthHeaders,
+} from "./setup";
 import type { ApiResponse, BoardData } from "./types";
 
 describe("Boards API", () => {
@@ -18,9 +33,11 @@ describe("Boards API", () => {
 
   describe("GET /api/v1/boards", () => {
     it("should return empty array when no boards exist", async () => {
-      const res = await app.request("/api/v1/boards");
+      const res = await app.request("/api/v1/boards", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<BoardData[]>;
+      const body = (await res.json()) as ApiResponse<BoardData[]>;
       expect(body.data).toEqual([]);
     });
 
@@ -38,9 +55,11 @@ describe("Boards API", () => {
         }),
       });
 
-      const res = await app.request("/api/v1/boards");
+      const res = await app.request("/api/v1/boards", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<BoardData[]>;
+      const body = (await res.json()) as ApiResponse<BoardData[]>;
       expect(body.data!.length).toBe(1);
     });
   });
@@ -61,7 +80,7 @@ describe("Boards API", () => {
         }),
       });
       expect(res.status).toBe(201);
-      const body = await res.json() as ApiResponse<BoardData>;
+      const body = (await res.json()) as ApiResponse<BoardData>;
       expect(body.data!.board).toBe(sampleBoard);
       expect(body.data!.symmetrical).toBe(true);
     });
@@ -96,7 +115,9 @@ describe("Boards API", () => {
 
   describe("GET /api/v1/boards/random", () => {
     it("should return 404 when no boards exist", async () => {
-      const res = await app.request("/api/v1/boards/random");
+      const res = await app.request("/api/v1/boards/random", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(404);
     });
 
@@ -113,16 +134,21 @@ describe("Boards API", () => {
         }),
       });
 
-      const res = await app.request("/api/v1/boards/random");
+      const res = await app.request("/api/v1/boards/random", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<BoardData>;
+      const body = (await res.json()) as ApiResponse<BoardData>;
       expect(body.data!.board).toBe(sampleBoard);
     });
   });
 
   describe("GET /api/v1/boards/:uuid", () => {
     it("should return 404 for non-existent board", async () => {
-      const res = await app.request("/api/v1/boards/00000000-0000-0000-0000-000000000000");
+      const res = await app.request(
+        "/api/v1/boards/00000000-0000-0000-0000-000000000000",
+        { headers: getAuthHeaders() }
+      );
       expect(res.status).toBe(404);
     });
 
@@ -138,11 +164,13 @@ describe("Boards API", () => {
           solution: sampleSolution,
         }),
       });
-      const created = await createRes.json() as ApiResponse<BoardData>;
+      const created = (await createRes.json()) as ApiResponse<BoardData>;
 
-      const res = await app.request(`/api/v1/boards/${created.data!.uuid}`);
+      const res = await app.request(`/api/v1/boards/${created.data!.uuid}`, {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<BoardData>;
+      const body = (await res.json()) as ApiResponse<BoardData>;
       expect(body.data!.board).toBe(sampleBoard);
     });
   });
@@ -161,7 +189,7 @@ describe("Boards API", () => {
           symmetrical: false,
         }),
       });
-      const created = await createRes.json() as ApiResponse<BoardData>;
+      const created = (await createRes.json()) as ApiResponse<BoardData>;
 
       const res = await app.request(`/api/v1/boards/${created.data!.uuid}`, {
         method: "PUT",
@@ -172,7 +200,7 @@ describe("Boards API", () => {
         body: JSON.stringify({ symmetrical: true }),
       });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<BoardData>;
+      const body = (await res.json()) as ApiResponse<BoardData>;
       expect(body.data!.symmetrical).toBe(true);
     });
   });
@@ -190,7 +218,7 @@ describe("Boards API", () => {
           solution: sampleSolution,
         }),
       });
-      const created = await createRes.json() as ApiResponse<BoardData>;
+      const created = (await createRes.json()) as ApiResponse<BoardData>;
 
       const res = await app.request(`/api/v1/boards/${created.data!.uuid}`, {
         method: "DELETE",
@@ -198,7 +226,9 @@ describe("Boards API", () => {
       });
       expect(res.status).toBe(200);
 
-      const getRes = await app.request(`/api/v1/boards/${created.data!.uuid}`);
+      const getRes = await app.request(`/api/v1/boards/${created.data!.uuid}`, {
+        headers: getAuthHeaders(),
+      });
       expect(getRes.status).toBe(404);
     });
   });

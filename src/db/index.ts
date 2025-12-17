@@ -87,6 +87,17 @@ export async function initDatabase() {
     )
   `;
 
+  await client`
+    CREATE TABLE IF NOT EXISTS access_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id VARCHAR(128) NOT NULL,
+      endpoint VARCHAR(50) NOT NULL,
+      access_date DATE NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, endpoint, access_date)
+    )
+  `;
+
   console.log("Database tables initialized");
 }
 

@@ -1,16 +1,17 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { firebaseAuthMiddleware } from "../middleware/firebaseAuth";
+import { createAccessControlMiddleware } from "../middleware/accessControl";
 import { userIdParamSchema } from "../schemas";
 import { getSubscriberEntitlements } from "../services/revenuecat";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const usersRouter = new Hono();
+const accessControl = createAccessControlMiddleware("users");
 
-// GET user subscriptions (requires Firebase auth)
+// GET user subscriptions (requires auth + access control)
 usersRouter.get(
   "/:userId/subscriptions",
-  firebaseAuthMiddleware,
+  accessControl,
   zValidator("param", userIdParamSchema),
   async c => {
     const { userId } = c.req.valid("param");

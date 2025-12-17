@@ -1,6 +1,19 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from "bun:test";
 import { app } from "../src/index";
-import { setupTestDatabase, cleanupTestDatabase, closeTestDatabase, API_TOKEN } from "./setup";
+import {
+  setupTestDatabase,
+  cleanupTestDatabase,
+  closeTestDatabase,
+  API_TOKEN,
+  getAuthHeaders,
+} from "./setup";
 import type { ApiResponse, LevelData, TechniqueData } from "./types";
 
 describe("Techniques API", () => {
@@ -24,15 +37,17 @@ describe("Techniques API", () => {
       },
       body: JSON.stringify({ index: 1, title: "Easy" }),
     });
-    const levelBody = await levelRes.json() as ApiResponse<LevelData>;
+    const levelBody = (await levelRes.json()) as ApiResponse<LevelData>;
     levelUuid = levelBody.data!.uuid;
   });
 
   describe("GET /api/v1/techniques", () => {
     it("should return empty array when no techniques exist", async () => {
-      const res = await app.request("/api/v1/techniques");
+      const res = await app.request("/api/v1/techniques", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<TechniqueData[]>;
+      const body = (await res.json()) as ApiResponse<TechniqueData[]>;
       expect(body.data).toEqual([]);
     });
 
@@ -50,9 +65,12 @@ describe("Techniques API", () => {
         }),
       });
 
-      const res = await app.request(`/api/v1/techniques?level_uuid=${levelUuid}`);
+      const res = await app.request(
+        `/api/v1/techniques?level_uuid=${levelUuid}`,
+        { headers: getAuthHeaders() }
+      );
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<TechniqueData[]>;
+      const body = (await res.json()) as ApiResponse<TechniqueData[]>;
       expect(body.data!.length).toBe(1);
     });
   });
@@ -73,7 +91,7 @@ describe("Techniques API", () => {
         }),
       });
       expect(res.status).toBe(201);
-      const body = await res.json() as ApiResponse<TechniqueData>;
+      const body = (await res.json()) as ApiResponse<TechniqueData>;
       expect(body.data!.title).toBe("Naked Singles");
     });
 
@@ -93,7 +111,10 @@ describe("Techniques API", () => {
 
   describe("GET /api/v1/techniques/:uuid", () => {
     it("should return 404 for non-existent technique", async () => {
-      const res = await app.request("/api/v1/techniques/00000000-0000-0000-0000-000000000000");
+      const res = await app.request(
+        "/api/v1/techniques/00000000-0000-0000-0000-000000000000",
+        { headers: getAuthHeaders() }
+      );
       expect(res.status).toBe(404);
     });
 
@@ -110,11 +131,14 @@ describe("Techniques API", () => {
           title: "Hidden Singles",
         }),
       });
-      const created = await createRes.json() as ApiResponse<TechniqueData>;
+      const created = (await createRes.json()) as ApiResponse<TechniqueData>;
 
-      const res = await app.request(`/api/v1/techniques/${created.data!.uuid}`);
+      const res = await app.request(
+        `/api/v1/techniques/${created.data!.uuid}`,
+        { headers: getAuthHeaders() }
+      );
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<TechniqueData>;
+      const body = (await res.json()) as ApiResponse<TechniqueData>;
       expect(body.data!.title).toBe("Hidden Singles");
     });
   });
@@ -133,18 +157,21 @@ describe("Techniques API", () => {
           title: "Original",
         }),
       });
-      const created = await createRes.json() as ApiResponse<TechniqueData>;
+      const created = (await createRes.json()) as ApiResponse<TechniqueData>;
 
-      const res = await app.request(`/api/v1/techniques/${created.data!.uuid}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${API_TOKEN}`,
-        },
-        body: JSON.stringify({ title: "Updated" }),
-      });
+      const res = await app.request(
+        `/api/v1/techniques/${created.data!.uuid}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${API_TOKEN}`,
+          },
+          body: JSON.stringify({ title: "Updated" }),
+        }
+      );
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<TechniqueData>;
+      const body = (await res.json()) as ApiResponse<TechniqueData>;
       expect(body.data!.title).toBe("Updated");
     });
   });
@@ -163,15 +190,21 @@ describe("Techniques API", () => {
           title: "ToDelete",
         }),
       });
-      const created = await createRes.json() as ApiResponse<TechniqueData>;
+      const created = (await createRes.json()) as ApiResponse<TechniqueData>;
 
-      const res = await app.request(`/api/v1/techniques/${created.data!.uuid}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${API_TOKEN}` },
-      });
+      const res = await app.request(
+        `/api/v1/techniques/${created.data!.uuid}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${API_TOKEN}` },
+        }
+      );
       expect(res.status).toBe(200);
 
-      const getRes = await app.request(`/api/v1/techniques/${created.data!.uuid}`);
+      const getRes = await app.request(
+        `/api/v1/techniques/${created.data!.uuid}`,
+        { headers: getAuthHeaders() }
+      );
       expect(getRes.status).toBe(404);
     });
   });

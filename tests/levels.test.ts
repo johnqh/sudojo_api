@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 import { app } from "../src/index";
-import { setupTestDatabase, cleanupTestDatabase, closeTestDatabase, API_TOKEN } from "./setup";
+import {
+  setupTestDatabase,
+  cleanupTestDatabase,
+  closeTestDatabase,
+  API_TOKEN,
+  getAuthHeaders,
+} from "./setup";
 import type { ApiResponse, LevelData } from "./types";
 
 describe("Levels API", () => {
@@ -18,9 +24,11 @@ describe("Levels API", () => {
 
   describe("GET /api/v1/levels", () => {
     it("should return empty array when no levels exist", async () => {
-      const res = await app.request("/api/v1/levels");
+      const res = await app.request("/api/v1/levels", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<LevelData[]>;
+      const body = (await res.json()) as ApiResponse<LevelData[]>;
       expect(body.data).toEqual([]);
     });
 
@@ -35,9 +43,11 @@ describe("Levels API", () => {
         body: JSON.stringify({ index: 1, title: "Easy", text: "Easy puzzles" }),
       });
 
-      const res = await app.request("/api/v1/levels");
+      const res = await app.request("/api/v1/levels", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<LevelData[]>;
+      const body = (await res.json()) as ApiResponse<LevelData[]>;
       expect(body.data!.length).toBe(1);
       expect(body.data![0].title).toBe("Easy");
     });
@@ -62,7 +72,8 @@ describe("Levels API", () => {
         },
         body: JSON.stringify({ index: 1, title: "Easy" }),
       });
-      expect(res.status).toBe(403);
+      // Invalid tokens are rejected by accessControl middleware with 401
+      expect(res.status).toBe(401);
     });
 
     it("should create a level with valid token", async () => {
@@ -100,7 +111,10 @@ describe("Levels API", () => {
 
   describe("GET /api/v1/levels/:uuid", () => {
     it("should return 404 for non-existent level", async () => {
-      const res = await app.request("/api/v1/levels/00000000-0000-0000-0000-000000000000");
+      const res = await app.request(
+        "/api/v1/levels/00000000-0000-0000-0000-000000000000",
+        { headers: getAuthHeaders() }
+      );
       expect(res.status).toBe(404);
     });
 
@@ -114,11 +128,13 @@ describe("Levels API", () => {
         },
         body: JSON.stringify({ index: 1, title: "Medium" }),
       });
-      const created = await createRes.json() as ApiResponse<LevelData>;
+      const created = (await createRes.json()) as ApiResponse<LevelData>;
 
-      const res = await app.request(`/api/v1/levels/${created.data!.uuid}`);
+      const res = await app.request(`/api/v1/levels/${created.data!.uuid}`, {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<LevelData>;
+      const body = (await res.json()) as ApiResponse<LevelData>;
       expect(body.data!.title).toBe("Medium");
     });
   });
@@ -170,7 +186,7 @@ describe("Levels API", () => {
         },
         body: JSON.stringify({ index: 1, title: "ToDelete" }),
       });
-      const created = await createRes.json() as ApiResponse<LevelData>;
+      const created = (await createRes.json()) as ApiResponse<LevelData>;
 
       const res = await app.request(`/api/v1/levels/${created.data!.uuid}`, {
         method: "DELETE",
@@ -179,14 +195,19 @@ describe("Levels API", () => {
       expect(res.status).toBe(200);
 
       // Verify it's deleted
-      const getRes = await app.request(`/api/v1/levels/${created.data!.uuid}`);
+      const getRes = await app.request(`/api/v1/levels/${created.data!.uuid}`, {
+        headers: getAuthHeaders(),
+      });
       expect(getRes.status).toBe(404);
     });
 
     it("should reject delete without auth", async () => {
-      const res = await app.request("/api/v1/levels/00000000-0000-0000-0000-000000000000", {
-        method: "DELETE",
-      });
+      const res = await app.request(
+        "/api/v1/levels/00000000-0000-0000-0000-000000000000",
+        {
+          method: "DELETE",
+        }
+      );
       expect(res.status).toBe(401);
     });
   });

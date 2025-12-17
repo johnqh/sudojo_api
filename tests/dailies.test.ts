@@ -1,6 +1,21 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from "bun:test";
 import { app } from "../src/index";
-import { setupTestDatabase, cleanupTestDatabase, closeTestDatabase, API_TOKEN, sampleBoard, sampleSolution } from "./setup";
+import {
+  setupTestDatabase,
+  cleanupTestDatabase,
+  closeTestDatabase,
+  API_TOKEN,
+  sampleBoard,
+  sampleSolution,
+  getAuthHeaders,
+} from "./setup";
 import type { ApiResponse, DailyData } from "./types";
 
 describe("Dailies API", () => {
@@ -18,9 +33,11 @@ describe("Dailies API", () => {
 
   describe("GET /api/v1/dailies", () => {
     it("should return empty array when no dailies exist", async () => {
-      const res = await app.request("/api/v1/dailies");
+      const res = await app.request("/api/v1/dailies", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<DailyData[]>;
+      const body = (await res.json()) as ApiResponse<DailyData[]>;
       expect(body.data).toEqual([]);
     });
   });
@@ -41,7 +58,7 @@ describe("Dailies API", () => {
         }),
       });
       expect(res.status).toBe(201);
-      const body = await res.json() as ApiResponse<DailyData>;
+      const body = (await res.json()) as ApiResponse<DailyData>;
       expect(body.data!.date).toContain("2024-01-15");
     });
 
@@ -77,7 +94,9 @@ describe("Dailies API", () => {
 
   describe("GET /api/v1/dailies/date/:date", () => {
     it("should return 404 for non-existent date", async () => {
-      const res = await app.request("/api/v1/dailies/date/2024-01-01");
+      const res = await app.request("/api/v1/dailies/date/2024-01-01", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(404);
     });
 
@@ -95,16 +114,20 @@ describe("Dailies API", () => {
         }),
       });
 
-      const res = await app.request("/api/v1/dailies/date/2024-02-20");
+      const res = await app.request("/api/v1/dailies/date/2024-02-20", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<DailyData>;
+      const body = (await res.json()) as ApiResponse<DailyData>;
       expect(body.data!.date).toContain("2024-02-20");
     });
   });
 
   describe("GET /api/v1/dailies/random", () => {
     it("should return 404 when no dailies exist", async () => {
-      const res = await app.request("/api/v1/dailies/random");
+      const res = await app.request("/api/v1/dailies/random", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(404);
     });
 
@@ -122,7 +145,9 @@ describe("Dailies API", () => {
         }),
       });
 
-      const res = await app.request("/api/v1/dailies/random");
+      const res = await app.request("/api/v1/dailies/random", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
     });
   });
@@ -142,7 +167,7 @@ describe("Dailies API", () => {
           techniques: 1,
         }),
       });
-      const created = await createRes.json() as ApiResponse<DailyData>;
+      const created = (await createRes.json()) as ApiResponse<DailyData>;
 
       const res = await app.request(`/api/v1/dailies/${created.data!.uuid}`, {
         method: "PUT",
@@ -153,7 +178,7 @@ describe("Dailies API", () => {
         body: JSON.stringify({ techniques: 5 }),
       });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<DailyData>;
+      const body = (await res.json()) as ApiResponse<DailyData>;
       expect(body.data!.techniques).toBe(5);
     });
   });
@@ -172,7 +197,7 @@ describe("Dailies API", () => {
           solution: sampleSolution,
         }),
       });
-      const created = await createRes.json() as ApiResponse<DailyData>;
+      const created = (await createRes.json()) as ApiResponse<DailyData>;
 
       const res = await app.request(`/api/v1/dailies/${created.data!.uuid}`, {
         method: "DELETE",

@@ -8,12 +8,14 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
+import { createAccessControlMiddleware } from "../middleware/accessControl";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const learningRouter = new Hono();
+const accessControl = createAccessControlMiddleware("learning");
 
-// GET all learning entries (public)
-learningRouter.get("/", async c => {
+// GET all learning entries (requires auth + access control)
+learningRouter.get("/", accessControl, async c => {
   const techniqueUuid = c.req.query("technique_uuid");
   const languageCode = c.req.query("language_code");
 
@@ -51,21 +53,30 @@ learningRouter.get("/", async c => {
   return c.json(successResponse(rows));
 });
 
-// GET one learning entry by uuid (public)
-learningRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
-  const { uuid } = c.req.valid("param");
-  const rows = await db.select().from(learning).where(eq(learning.uuid, uuid));
+// GET one learning entry by uuid (requires auth + access control)
+learningRouter.get(
+  "/:uuid",
+  accessControl,
+  zValidator("param", uuidParamSchema),
+  async c => {
+    const { uuid } = c.req.valid("param");
+    const rows = await db
+      .select()
+      .from(learning)
+      .where(eq(learning.uuid, uuid));
 
-  if (rows.length === 0) {
-    return c.json(errorResponse("Learning entry not found"), 404);
+    if (rows.length === 0) {
+      return c.json(errorResponse("Learning entry not found"), 404);
+    }
+
+    return c.json(successResponse(rows[0]));
   }
+);
 
-  return c.json(successResponse(rows[0]));
-});
-
-// POST create learning entry (protected)
+// POST create learning entry (requires auth + access control + admin)
 learningRouter.post(
   "/",
+  accessControl,
   authMiddleware,
   zValidator("json", learningCreateSchema),
   async c => {
@@ -86,9 +97,10 @@ learningRouter.post(
   }
 );
 
-// PUT update learning entry (protected)
+// PUT update learning entry (requires auth + access control + admin)
 learningRouter.put(
   "/:uuid",
+  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", learningUpdateSchema),
@@ -123,9 +135,10 @@ learningRouter.put(
   }
 );
 
-// DELETE learning entry (protected)
+// DELETE learning entry (requires auth + access control + admin)
 learningRouter.delete(
   "/:uuid",
+  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {

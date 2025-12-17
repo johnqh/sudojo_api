@@ -1,7 +1,25 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from "bun:test";
 import { app } from "../src/index";
-import { setupTestDatabase, cleanupTestDatabase, closeTestDatabase, API_TOKEN } from "./setup";
-import type { ApiResponse, LevelData, TechniqueData, LearningData } from "./types";
+import {
+  setupTestDatabase,
+  cleanupTestDatabase,
+  closeTestDatabase,
+  API_TOKEN,
+  getAuthHeaders,
+} from "./setup";
+import type {
+  ApiResponse,
+  LevelData,
+  TechniqueData,
+  LearningData,
+} from "./types";
 
 describe("Learning API", () => {
   let levelUuid: string;
@@ -25,7 +43,7 @@ describe("Learning API", () => {
       },
       body: JSON.stringify({ index: 1, title: "Easy" }),
     });
-    const levelBody = await levelRes.json() as ApiResponse<LevelData>;
+    const levelBody = (await levelRes.json()) as ApiResponse<LevelData>;
     levelUuid = levelBody.data!.uuid;
 
     const techniqueRes = await app.request("/api/v1/techniques", {
@@ -40,15 +58,18 @@ describe("Learning API", () => {
         title: "Naked Singles",
       }),
     });
-    const techniqueBody = await techniqueRes.json() as ApiResponse<TechniqueData>;
+    const techniqueBody =
+      (await techniqueRes.json()) as ApiResponse<TechniqueData>;
     techniqueUuid = techniqueBody.data!.uuid;
   });
 
   describe("GET /api/v1/learning", () => {
     it("should return empty array when no learning entries exist", async () => {
-      const res = await app.request("/api/v1/learning");
+      const res = await app.request("/api/v1/learning", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<LearningData[]>;
+      const body = (await res.json()) as ApiResponse<LearningData[]>;
       expect(body.data).toEqual([]);
     });
 
@@ -67,9 +88,12 @@ describe("Learning API", () => {
         }),
       });
 
-      const res = await app.request(`/api/v1/learning?technique_uuid=${techniqueUuid}`);
+      const res = await app.request(
+        `/api/v1/learning?technique_uuid=${techniqueUuid}`,
+        { headers: getAuthHeaders() }
+      );
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<LearningData[]>;
+      const body = (await res.json()) as ApiResponse<LearningData[]>;
       expect(body.data!.length).toBe(1);
     });
 
@@ -88,9 +112,11 @@ describe("Learning API", () => {
         }),
       });
 
-      const res = await app.request("/api/v1/learning?language_code=es");
+      const res = await app.request("/api/v1/learning?language_code=es", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<LearningData[]>;
+      const body = (await res.json()) as ApiResponse<LearningData[]>;
       expect(body.data!.length).toBe(1);
       expect(body.data![0].language_code).toBe("es");
     });
@@ -113,7 +139,7 @@ describe("Learning API", () => {
         }),
       });
       expect(res.status).toBe(201);
-      const body = await res.json() as ApiResponse<LearningData>;
+      const body = (await res.json()) as ApiResponse<LearningData>;
       expect(body.data!.text).toBe("Look for cells with only one candidate");
       expect(body.data!.image_url).toBe("https://example.com/image.png");
     });
@@ -134,7 +160,10 @@ describe("Learning API", () => {
 
   describe("GET /api/v1/learning/:uuid", () => {
     it("should return 404 for non-existent learning entry", async () => {
-      const res = await app.request("/api/v1/learning/00000000-0000-0000-0000-000000000000");
+      const res = await app.request(
+        "/api/v1/learning/00000000-0000-0000-0000-000000000000",
+        { headers: getAuthHeaders() }
+      );
       expect(res.status).toBe(404);
     });
 
@@ -152,11 +181,13 @@ describe("Learning API", () => {
           text: "Etape 1",
         }),
       });
-      const created = await createRes.json() as ApiResponse<LearningData>;
+      const created = (await createRes.json()) as ApiResponse<LearningData>;
 
-      const res = await app.request(`/api/v1/learning/${created.data!.uuid}`);
+      const res = await app.request(`/api/v1/learning/${created.data!.uuid}`, {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<LearningData>;
+      const body = (await res.json()) as ApiResponse<LearningData>;
       expect(body.data!.language_code).toBe("fr");
     });
   });
@@ -175,7 +206,7 @@ describe("Learning API", () => {
           text: "Original text",
         }),
       });
-      const created = await createRes.json() as ApiResponse<LearningData>;
+      const created = (await createRes.json()) as ApiResponse<LearningData>;
 
       const res = await app.request(`/api/v1/learning/${created.data!.uuid}`, {
         method: "PUT",
@@ -186,7 +217,7 @@ describe("Learning API", () => {
         body: JSON.stringify({ text: "Updated text" }),
       });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<LearningData>;
+      const body = (await res.json()) as ApiResponse<LearningData>;
       expect(body.data!.text).toBe("Updated text");
     });
   });
@@ -205,7 +236,7 @@ describe("Learning API", () => {
           text: "ToDelete",
         }),
       });
-      const created = await createRes.json() as ApiResponse<LearningData>;
+      const created = (await createRes.json()) as ApiResponse<LearningData>;
 
       const res = await app.request(`/api/v1/learning/${created.data!.uuid}`, {
         method: "DELETE",
@@ -213,7 +244,10 @@ describe("Learning API", () => {
       });
       expect(res.status).toBe(200);
 
-      const getRes = await app.request(`/api/v1/learning/${created.data!.uuid}`);
+      const getRes = await app.request(
+        `/api/v1/learning/${created.data!.uuid}`,
+        { headers: getAuthHeaders() }
+      );
       expect(getRes.status).toBe(404);
     });
   });

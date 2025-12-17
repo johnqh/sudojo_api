@@ -1,6 +1,21 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from "bun:test";
 import { app } from "../src/index";
-import { setupTestDatabase, cleanupTestDatabase, closeTestDatabase, API_TOKEN, sampleBoard, sampleSolution } from "./setup";
+import {
+  setupTestDatabase,
+  cleanupTestDatabase,
+  closeTestDatabase,
+  API_TOKEN,
+  sampleBoard,
+  sampleSolution,
+  getAuthHeaders,
+} from "./setup";
 import type { ApiResponse, ChallengeData } from "./types";
 
 describe("Challenges API", () => {
@@ -18,9 +33,11 @@ describe("Challenges API", () => {
 
   describe("GET /api/v1/challenges", () => {
     it("should return empty array when no challenges exist", async () => {
-      const res = await app.request("/api/v1/challenges");
+      const res = await app.request("/api/v1/challenges", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<ChallengeData[]>;
+      const body = (await res.json()) as ApiResponse<ChallengeData[]>;
       expect(body.data).toEqual([]);
     });
 
@@ -51,9 +68,11 @@ describe("Challenges API", () => {
         }),
       });
 
-      const res = await app.request("/api/v1/challenges?difficulty=3");
+      const res = await app.request("/api/v1/challenges?difficulty=3", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<ChallengeData[]>;
+      const body = (await res.json()) as ApiResponse<ChallengeData[]>;
       expect(body.data!.length).toBe(1);
       expect(body.data![0].difficulty).toBe(3);
     });
@@ -74,7 +93,7 @@ describe("Challenges API", () => {
         }),
       });
       expect(res.status).toBe(201);
-      const body = await res.json() as ApiResponse<ChallengeData>;
+      const body = (await res.json()) as ApiResponse<ChallengeData>;
       expect(body.data!.difficulty).toBe(5);
     });
 
@@ -109,7 +128,9 @@ describe("Challenges API", () => {
 
   describe("GET /api/v1/challenges/random", () => {
     it("should return 404 when no challenges exist", async () => {
-      const res = await app.request("/api/v1/challenges/random");
+      const res = await app.request("/api/v1/challenges/random", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(404);
     });
 
@@ -127,9 +148,11 @@ describe("Challenges API", () => {
         }),
       });
 
-      const res = await app.request("/api/v1/challenges/random");
+      const res = await app.request("/api/v1/challenges/random", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<ChallengeData>;
+      const body = (await res.json()) as ApiResponse<ChallengeData>;
       expect(body.data!.board).toBe(sampleBoard);
     });
 
@@ -147,16 +170,21 @@ describe("Challenges API", () => {
         }),
       });
 
-      const res = await app.request("/api/v1/challenges/random?difficulty=8");
+      const res = await app.request("/api/v1/challenges/random?difficulty=8", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<ChallengeData>;
+      const body = (await res.json()) as ApiResponse<ChallengeData>;
       expect(body.data!.difficulty).toBe(8);
     });
   });
 
   describe("GET /api/v1/challenges/:uuid", () => {
     it("should return 404 for non-existent challenge", async () => {
-      const res = await app.request("/api/v1/challenges/00000000-0000-0000-0000-000000000000");
+      const res = await app.request(
+        "/api/v1/challenges/00000000-0000-0000-0000-000000000000",
+        { headers: getAuthHeaders() }
+      );
       expect(res.status).toBe(404);
     });
 
@@ -173,11 +201,14 @@ describe("Challenges API", () => {
           difficulty: 2,
         }),
       });
-      const created = await createRes.json() as ApiResponse<ChallengeData>;
+      const created = (await createRes.json()) as ApiResponse<ChallengeData>;
 
-      const res = await app.request(`/api/v1/challenges/${created.data!.uuid}`);
+      const res = await app.request(
+        `/api/v1/challenges/${created.data!.uuid}`,
+        { headers: getAuthHeaders() }
+      );
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<ChallengeData>;
+      const body = (await res.json()) as ApiResponse<ChallengeData>;
       expect(body.data!.difficulty).toBe(2);
     });
   });
@@ -196,18 +227,21 @@ describe("Challenges API", () => {
           difficulty: 3,
         }),
       });
-      const created = await createRes.json() as ApiResponse<ChallengeData>;
+      const created = (await createRes.json()) as ApiResponse<ChallengeData>;
 
-      const res = await app.request(`/api/v1/challenges/${created.data!.uuid}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${API_TOKEN}`,
-        },
-        body: JSON.stringify({ difficulty: 9 }),
-      });
+      const res = await app.request(
+        `/api/v1/challenges/${created.data!.uuid}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${API_TOKEN}`,
+          },
+          body: JSON.stringify({ difficulty: 9 }),
+        }
+      );
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<ChallengeData>;
+      const body = (await res.json()) as ApiResponse<ChallengeData>;
       expect(body.data!.difficulty).toBe(9);
     });
   });
@@ -225,12 +259,15 @@ describe("Challenges API", () => {
           solution: sampleSolution,
         }),
       });
-      const created = await createRes.json() as ApiResponse<ChallengeData>;
+      const created = (await createRes.json()) as ApiResponse<ChallengeData>;
 
-      const res = await app.request(`/api/v1/challenges/${created.data!.uuid}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${API_TOKEN}` },
-      });
+      const res = await app.request(
+        `/api/v1/challenges/${created.data!.uuid}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${API_TOKEN}` },
+        }
+      );
       expect(res.status).toBe(200);
     });
   });
