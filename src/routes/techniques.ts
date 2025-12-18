@@ -8,14 +8,12 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
-import { createAccessControlMiddleware } from "../middleware/accessControl";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const techniquesRouter = new Hono();
-const accessControl = createAccessControlMiddleware("techniques");
 
-// GET all techniques (requires auth + access control)
-techniquesRouter.get("/", accessControl, async c => {
+// GET all techniques (public)
+techniquesRouter.get("/", async c => {
   const levelUuid = c.req.query("level_uuid");
 
   let rows;
@@ -24,21 +22,20 @@ techniquesRouter.get("/", accessControl, async c => {
       .select()
       .from(techniques)
       .where(eq(techniques.level_uuid, levelUuid))
-      .orderBy(asc(techniques.index));
+      .orderBy(asc(techniques.title));
   } else {
     rows = await db
       .select()
       .from(techniques)
-      .orderBy(asc(techniques.level_uuid), asc(techniques.index));
+      .orderBy(asc(techniques.title));
   }
 
   return c.json(successResponse(rows));
 });
 
-// GET one technique by uuid (requires auth + access control)
+// GET one technique by uuid (public)
 techniquesRouter.get(
   "/:uuid",
-  accessControl,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");
@@ -55,10 +52,9 @@ techniquesRouter.get(
   }
 );
 
-// POST create technique (requires auth + access control + admin)
+// POST create technique (requires admin auth)
 techniquesRouter.post(
   "/",
-  accessControl,
   authMiddleware,
   zValidator("json", techniqueCreateSchema),
   async c => {
@@ -78,10 +74,9 @@ techniquesRouter.post(
   }
 );
 
-// PUT update technique (requires auth + access control + admin)
+// PUT update technique (requires admin auth)
 techniquesRouter.put(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", techniqueUpdateSchema),
@@ -114,10 +109,9 @@ techniquesRouter.put(
   }
 );
 
-// DELETE technique (requires auth + access control + admin)
+// DELETE technique (requires admin auth)
 techniquesRouter.delete(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {

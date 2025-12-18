@@ -8,14 +8,12 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
-import { createAccessControlMiddleware } from "../middleware/accessControl";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const learningRouter = new Hono();
-const accessControl = createAccessControlMiddleware("learning");
 
-// GET all learning entries (requires auth + access control)
-learningRouter.get("/", accessControl, async c => {
+// GET all learning entries (public)
+learningRouter.get("/", async c => {
   const techniqueUuid = c.req.query("technique_uuid");
   const languageCode = c.req.query("language_code");
 
@@ -53,10 +51,9 @@ learningRouter.get("/", accessControl, async c => {
   return c.json(successResponse(rows));
 });
 
-// GET one learning entry by uuid (requires auth + access control)
+// GET one learning entry by uuid (public)
 learningRouter.get(
   "/:uuid",
-  accessControl,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");
@@ -73,10 +70,9 @@ learningRouter.get(
   }
 );
 
-// POST create learning entry (requires auth + access control + admin)
+// POST create learning entry (requires admin auth)
 learningRouter.post(
   "/",
-  accessControl,
   authMiddleware,
   zValidator("json", learningCreateSchema),
   async c => {
@@ -97,10 +93,9 @@ learningRouter.post(
   }
 );
 
-// PUT update learning entry (requires auth + access control + admin)
+// PUT update learning entry (requires admin auth)
 learningRouter.put(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", learningUpdateSchema),
@@ -135,10 +130,9 @@ learningRouter.put(
   }
 );
 
-// DELETE learning entry (requires auth + access control + admin)
+// DELETE learning entry (requires admin auth)
 learningRouter.delete(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {

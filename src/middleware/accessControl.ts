@@ -36,7 +36,17 @@ export function createAccessControlMiddleware(endpoint: string) {
 
       if (isAnonymousUser(decodedToken)) {
         return c.json(
-          errorResponse("Anonymous users cannot access this resource"),
+          {
+            success: false,
+            error: "Account required",
+            message:
+              "Please log in or create an account to access sudoku puzzles.",
+            action: {
+              type: "auth_required",
+              options: ["login", "create_account"],
+            },
+            timestamp: new Date().toISOString(),
+          },
           403
         );
       }
@@ -63,9 +73,17 @@ export function createAccessControlMiddleware(endpoint: string) {
       const accessGranted = await checkAndRecordAccess(userId, endpoint);
       if (!accessGranted) {
         return c.json(
-          errorResponse(
-            "Daily access limit reached. Subscribe for unlimited access."
-          ),
+          {
+            success: false,
+            error: "Daily limit reached",
+            message:
+              "You've reached your daily puzzle limit. Subscribe to unlock unlimited puzzles and support the app.",
+            action: {
+              type: "subscription_required",
+              options: ["subscribe", "restore_purchase"],
+            },
+            timestamp: new Date().toISOString(),
+          },
           402
         );
       }

@@ -45,8 +45,8 @@ describe("Authentication Middleware", () => {
       );
     });
 
-    it("should reject GET request with wrong token", async () => {
-      const res = await app.request("/api/v1/levels", {
+    it("should reject GET request with wrong token on protected endpoint", async () => {
+      const res = await app.request("/api/v1/boards", {
         headers: {
           Authorization: "Bearer wrong-token",
         },
@@ -77,9 +77,24 @@ describe("Authentication Middleware", () => {
   });
 
   describe("Access Control", () => {
-    it("should require authentication for GET requests", async () => {
-      const res = await app.request("/api/v1/levels");
+    it("should require authentication for protected GET requests (boards)", async () => {
+      const res = await app.request("/api/v1/boards");
       expect(res.status).toBe(401);
+    });
+
+    it("should allow public GET requests without authentication (levels)", async () => {
+      const res = await app.request("/api/v1/levels");
+      expect(res.status).toBe(200);
+    });
+
+    it("should allow public GET requests without authentication (techniques)", async () => {
+      const res = await app.request("/api/v1/techniques");
+      expect(res.status).toBe(200);
+    });
+
+    it("should allow public GET requests without authentication (learning)", async () => {
+      const res = await app.request("/api/v1/learning");
+      expect(res.status).toBe(200);
     });
 
     it("should allow health check without authentication", async () => {

@@ -8,22 +8,19 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
-import { createAccessControlMiddleware } from "../middleware/accessControl";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const levelsRouter = new Hono();
-const accessControl = createAccessControlMiddleware("levels");
 
-// GET all levels (requires auth + access control)
-levelsRouter.get("/", accessControl, async c => {
+// GET all levels (public)
+levelsRouter.get("/", async c => {
   const rows = await db.select().from(levels).orderBy(asc(levels.index));
   return c.json(successResponse(rows));
 });
 
-// GET one level by uuid (requires auth + access control)
+// GET one level by uuid (public)
 levelsRouter.get(
   "/:uuid",
-  accessControl,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");
@@ -37,10 +34,9 @@ levelsRouter.get(
   }
 );
 
-// POST create level (requires auth + access control + admin)
+// POST create level (requires admin auth)
 levelsRouter.post(
   "/",
-  accessControl,
   authMiddleware,
   zValidator("json", levelCreateSchema),
   async c => {
@@ -60,10 +56,9 @@ levelsRouter.post(
   }
 );
 
-// PUT update level (requires auth + access control + admin)
+// PUT update level (requires admin auth)
 levelsRouter.put(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", levelUpdateSchema),
@@ -98,10 +93,9 @@ levelsRouter.put(
   }
 );
 
-// DELETE level (requires auth + access control + admin)
+// DELETE level (requires admin auth)
 levelsRouter.delete(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {
