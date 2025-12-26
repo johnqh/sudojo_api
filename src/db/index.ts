@@ -1,14 +1,36 @@
-import { drizzle } from "drizzle-orm/postgres-js";
+import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import { getRequiredEnv } from "../lib/env-helper";
 
-const connectionString = getRequiredEnv("DATABASE_URL");
+// Lazy initialization to allow test env to be applied first
+let _client: ReturnType<typeof postgres> | null = null;
+let _db: PostgresJsDatabase<typeof schema> | null = null;
 
-const client = postgres(connectionString);
-export const db = drizzle(client, { schema });
+function getClient() {
+  if (!_client) {
+    const connectionString = getRequiredEnv("DATABASE_URL");
+    _client = postgres(connectionString);
+  }
+  return _client;
+}
+
+export function getDb() {
+  if (!_db) {
+    _db = drizzle(getClient(), { schema });
+  }
+  return _db;
+}
+
+// For backwards compatibility - but prefer getDb() for test isolation
+export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
+  get(_, prop) {
+    return (getDb() as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});
 
 export async function initDatabase() {
+  const client = getClient();
   // Create tables if they don't exist
   await client`
     CREATE TABLE IF NOT EXISTS levels (
@@ -93,8 +115,7 @@ export async function initDatabase() {
       user_id VARCHAR(128) NOT NULL,
       endpoint VARCHAR(50) NOT NULL,
       access_date DATE NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(user_id, endpoint, access_date)
+      created_at TIMESTAMP DEFAULT NOW()
     )
   `;
 
@@ -102,7 +123,11 @@ export async function initDatabase() {
 }
 
 export async function closeDatabase() {
-  await client.end();
+  if (_client) {
+    await _client.end();
+    _client = null;
+    _db = null;
+  }
 }
 
 // Re-export schema for convenience

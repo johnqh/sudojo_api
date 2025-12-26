@@ -8,14 +8,12 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
-import { createAccessControlMiddleware } from "../middleware/accessControl";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const challengesRouter = new Hono();
-const accessControl = createAccessControlMiddleware("challenges");
 
-// GET all challenges (requires auth + access control)
-challengesRouter.get("/", accessControl, async c => {
+// GET all challenges (public)
+challengesRouter.get("/", async c => {
   const levelUuid = c.req.query("level_uuid");
   const difficulty = c.req.query("difficulty");
 
@@ -53,8 +51,8 @@ challengesRouter.get("/", accessControl, async c => {
   return c.json(successResponse(rows));
 });
 
-// GET random challenge (requires auth + access control)
-challengesRouter.get("/random", accessControl, async c => {
+// GET random challenge (public)
+challengesRouter.get("/random", async c => {
   const levelUuid = c.req.query("level_uuid");
   const difficulty = c.req.query("difficulty");
 
@@ -100,10 +98,9 @@ challengesRouter.get("/random", accessControl, async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// GET one challenge by uuid (requires auth + access control)
+// GET one challenge by uuid (public)
 challengesRouter.get(
   "/:uuid",
-  accessControl,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");
@@ -120,10 +117,9 @@ challengesRouter.get(
   }
 );
 
-// POST create challenge (requires auth + access control + admin)
+// POST create challenge (admin only)
 challengesRouter.post(
   "/",
-  accessControl,
   authMiddleware,
   zValidator("json", challengeCreateSchema),
   async c => {
@@ -144,10 +140,9 @@ challengesRouter.post(
   }
 );
 
-// PUT update challenge (requires auth + access control + admin)
+// PUT update challenge (admin only)
 challengesRouter.put(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", challengeUpdateSchema),
@@ -183,10 +178,9 @@ challengesRouter.put(
   }
 );
 
-// DELETE challenge (requires auth + access control + admin)
+// DELETE challenge (admin only)
 challengesRouter.delete(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {

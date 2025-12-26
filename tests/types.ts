@@ -56,3 +56,48 @@ export interface ChallengeData {
   board: string;
   solution: string;
 }
+
+// Solver types
+export interface SolverBoard {
+  original: string;
+  user: string | null;
+  solution: string | null;
+  pencilmarks: {
+    auto: boolean;
+    pencilmarks: string;
+  } | null;
+}
+
+export interface SolveData {
+  board: SolverBoard;
+  hints: Array<{
+    title: string;
+    text: string;
+    areas: Array<{ type: string; color: string; index: number }>;
+    cells: Array<{
+      row: number;
+      column: number;
+      color: string;
+      fill: boolean;
+      actions: {
+        select: string;
+        unselect: string;
+        add: string;
+        remove: string;
+        highlight: string;
+      };
+    }>;
+  }>;
+}
+
+export interface ValidateData {
+  board: SolverBoard;
+  hints: null;
+}
+
+export interface GenerateData {
+  board: SolverBoard;
+  level: number;
+  techniques: number;
+  hints: null;
+}

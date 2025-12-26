@@ -70,8 +70,8 @@ export function createAccessControlMiddleware(endpoint: string) {
       }
 
       // Non-subscriber: check daily access limit
-      const accessGranted = await checkAndRecordAccess(userId, endpoint);
-      if (!accessGranted) {
+      const { granted, remaining } = await checkAndRecordAccess(userId, endpoint);
+      if (!granted) {
         return c.json(
           {
             success: false,
@@ -87,6 +87,9 @@ export function createAccessControlMiddleware(endpoint: string) {
           402
         );
       }
+
+      // Add remaining access count to response headers
+      c.header("X-Daily-Remaining", remaining.toString());
 
       await next();
     } catch (_error) {

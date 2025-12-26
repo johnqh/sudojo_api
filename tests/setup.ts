@@ -1,3 +1,14 @@
+// Safety check: ensure we're using the test database
+const dbUrl = process.env.DATABASE_URL || "";
+if (!dbUrl.includes("_test")) {
+  throw new Error(
+    `SAFETY CHECK FAILED: Tests must run against a test database!\n` +
+    `Current DATABASE_URL: ${dbUrl}\n` +
+    `Expected: a database name ending with '_test'\n` +
+    `Make sure bunfig.toml has [test.env] file = ".env.test" and .env.test uses sudojo_test`
+  );
+}
+
 import { mock } from "bun:test";
 import {
   db,

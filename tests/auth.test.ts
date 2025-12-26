@@ -46,7 +46,7 @@ describe("Authentication Middleware", () => {
     });
 
     it("should reject GET request with wrong token on protected endpoint", async () => {
-      const res = await app.request("/api/v1/boards", {
+      const res = await app.request("/api/v1/solver/solve", {
         headers: {
           Authorization: "Bearer wrong-token",
         },
@@ -77,9 +77,14 @@ describe("Authentication Middleware", () => {
   });
 
   describe("Access Control", () => {
-    it("should require authentication for protected GET requests (boards)", async () => {
-      const res = await app.request("/api/v1/boards");
+    it("should require authentication for rate-limited endpoint (solver/solve)", async () => {
+      const res = await app.request("/api/v1/solver/solve");
       expect(res.status).toBe(401);
+    });
+
+    it("should allow public GET requests without authentication (boards)", async () => {
+      const res = await app.request("/api/v1/boards");
+      expect(res.status).toBe(200);
     });
 
     it("should allow public GET requests without authentication (levels)", async () => {

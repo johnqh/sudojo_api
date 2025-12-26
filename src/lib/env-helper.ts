@@ -46,21 +46,23 @@ function parseEnvLocal(): Record<string, string> {
 }
 
 /**
- * Get environment variable with .env.local priority
+ * Get environment variable with process.env priority
  *
  * Priority order:
- * 1. .env.local file values (highest priority)
- * 2. process.env (from .env or system)
+ * 1. process.env (from system, Bun test env, etc.) - highest priority
+ * 2. .env.local file values (for local development)
  * 3. defaultValue (if provided)
  */
 export function getEnv(key: string, defaultValue?: string): string | undefined {
+  // Check process.env first - allows Bun test env to override
+  if (process.env[key] !== undefined && process.env[key] !== "") {
+    return process.env[key];
+  }
+
+  // Fall back to .env.local for local development
   const envLocal = parseEnvLocal();
   if (envLocal[key] !== undefined && envLocal[key] !== "") {
     return envLocal[key];
-  }
-
-  if (process.env[key] !== undefined && process.env[key] !== "") {
-    return process.env[key];
   }
 
   return defaultValue;

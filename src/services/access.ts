@@ -1,17 +1,30 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { db, accessLogs } from "../db";
+
+const DAILY_LIMITS: Record<string, number> = {
+  boards: 2,
+  dailies: 2,
+  challenges: 2,
+  solve: 10,
+};
+
+const DEFAULT_DAILY_LIMIT = 2;
+
+function getDailyLimit(endpoint: string): number {
+  return DAILY_LIMITS[endpoint] ?? DEFAULT_DAILY_LIMIT;
+}
 
 function getTodayDate(): string {
   return new Date().toISOString().split("T")[0]!;
 }
 
-export async function hasAccessedToday(
+export async function getAccessCountToday(
   userId: string,
   endpoint: string
-): Promise<boolean> {
+): Promise<number> {
   const today = getTodayDate();
-  const rows = await db
-    .select()
+  const result = await db
+    .select({ count: count() })
     .from(accessLogs)
     .where(
       and(
@@ -20,7 +33,7 @@ export async function hasAccessedToday(
         eq(accessLogs.access_date, today)
       )
     );
-  return rows.length > 0;
+  return result[0]?.count ?? 0;
 }
 
 export async function recordAccess(
@@ -28,24 +41,22 @@ export async function recordAccess(
   endpoint: string
 ): Promise<void> {
   const today = getTodayDate();
-  await db
-    .insert(accessLogs)
-    .values({
-      user_id: userId,
-      endpoint,
-      access_date: today,
-    })
-    .onConflictDoNothing();
+  await db.insert(accessLogs).values({
+    user_id: userId,
+    endpoint,
+    access_date: today,
+  });
 }
 
 export async function checkAndRecordAccess(
   userId: string,
   endpoint: string
-): Promise<boolean> {
-  const alreadyAccessed = await hasAccessedToday(userId, endpoint);
-  if (alreadyAccessed) {
-    return false;
+): Promise<{ granted: boolean; remaining: number }> {
+  const limit = getDailyLimit(endpoint);
+  const accessCount = await getAccessCountToday(userId, endpoint);
+  if (accessCount >= limit) {
+    return { granted: false, remaining: 0 };
   }
   await recordAccess(userId, endpoint);
-  return true;
+  return { granted: true, remaining: limit - accessCount - 1 };
 }

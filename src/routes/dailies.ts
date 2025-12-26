@@ -9,20 +9,18 @@ import {
   dateParamSchema,
 } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
-import { createAccessControlMiddleware } from "../middleware/accessControl";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const dailiesRouter = new Hono();
-const accessControl = createAccessControlMiddleware("dailies");
 
-// GET all dailies (requires auth + access control)
-dailiesRouter.get("/", accessControl, async c => {
+// GET all dailies (public)
+dailiesRouter.get("/", async c => {
   const rows = await db.select().from(dailies).orderBy(desc(dailies.date));
   return c.json(successResponse(rows));
 });
 
-// GET random daily (requires auth + access control)
-dailiesRouter.get("/random", accessControl, async c => {
+// GET random daily (public)
+dailiesRouter.get("/random", async c => {
   const rows = await db
     .select()
     .from(dailies)
@@ -36,8 +34,8 @@ dailiesRouter.get("/random", accessControl, async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// GET today's daily (requires auth + access control)
-dailiesRouter.get("/today", accessControl, async c => {
+// GET today's daily (public)
+dailiesRouter.get("/today", async c => {
   const today = new Date().toISOString().split("T")[0] as string;
   const rows = await db.select().from(dailies).where(eq(dailies.date, today));
 
@@ -48,10 +46,9 @@ dailiesRouter.get("/today", accessControl, async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// GET daily by date (requires auth + access control)
+// GET daily by date (public)
 dailiesRouter.get(
   "/date/:date",
-  accessControl,
   zValidator("param", dateParamSchema),
   async c => {
     const { date } = c.req.valid("param");
@@ -65,10 +62,9 @@ dailiesRouter.get(
   }
 );
 
-// GET one daily by uuid (requires auth + access control)
+// GET one daily by uuid (public)
 dailiesRouter.get(
   "/:uuid",
-  accessControl,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");
@@ -82,10 +78,9 @@ dailiesRouter.get(
   }
 );
 
-// POST create daily (requires auth + access control + admin)
+// POST create daily (admin only)
 dailiesRouter.post(
   "/",
-  accessControl,
   authMiddleware,
   zValidator("json", dailyCreateSchema),
   async c => {
@@ -107,10 +102,9 @@ dailiesRouter.post(
   }
 );
 
-// PUT update daily (requires auth + access control + admin)
+// PUT update daily (admin only)
 dailiesRouter.put(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", dailyUpdateSchema),
@@ -147,10 +141,9 @@ dailiesRouter.put(
   }
 );
 
-// DELETE daily (requires auth + access control + admin)
+// DELETE daily (admin only)
 dailiesRouter.delete(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {

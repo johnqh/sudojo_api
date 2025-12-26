@@ -8,14 +8,12 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { authMiddleware } from "../middleware/auth";
-import { createAccessControlMiddleware } from "../middleware/accessControl";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const boardsRouter = new Hono();
-const accessControl = createAccessControlMiddleware("boards");
 
-// GET all boards (requires auth + access control)
-boardsRouter.get("/", accessControl, async c => {
+// GET all boards (public)
+boardsRouter.get("/", async c => {
   const levelUuid = c.req.query("level_uuid");
 
   let rows;
@@ -35,8 +33,8 @@ boardsRouter.get("/", accessControl, async c => {
   return c.json(successResponse(rows));
 });
 
-// GET random board (requires auth + access control)
-boardsRouter.get("/random", accessControl, async c => {
+// GET random board (public)
+boardsRouter.get("/random", async c => {
   const levelUuid = c.req.query("level_uuid");
 
   let rows;
@@ -62,10 +60,9 @@ boardsRouter.get("/random", accessControl, async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// GET one board by uuid (requires auth + access control)
+// GET one board by uuid (public)
 boardsRouter.get(
   "/:uuid",
-  accessControl,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");
@@ -79,10 +76,9 @@ boardsRouter.get(
   }
 );
 
-// POST create board (requires auth + access control + admin)
+// POST create board (admin only)
 boardsRouter.post(
   "/",
-  accessControl,
   authMiddleware,
   zValidator("json", boardCreateSchema),
   async c => {
@@ -103,10 +99,9 @@ boardsRouter.post(
   }
 );
 
-// PUT update board (requires auth + access control + admin)
+// PUT update board (admin only)
 boardsRouter.put(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", boardUpdateSchema),
@@ -141,10 +136,9 @@ boardsRouter.put(
   }
 );
 
-// DELETE board (requires auth + access control + admin)
+// DELETE board (admin only)
 boardsRouter.delete(
   "/:uuid",
-  accessControl,
   authMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {
