@@ -36,7 +36,7 @@ async function proxySolverRequest<T>(
 
 // GET /solve - Get hints for solving a puzzle (rate limited: 10/day)
 // Query params: original, user, autopencilmarks, pencilmarks, filters
-solverRouter.get("/solve", accessControl, async (c) => {
+solverRouter.get("/solve", accessControl, async c => {
   try {
     const queryString = new URL(c.req.url).search.slice(1);
     const result = await proxySolverRequest<SolveData>("solve", queryString);
@@ -57,10 +57,13 @@ solverRouter.get("/solve", accessControl, async (c) => {
 
 // GET /validate - Validate a puzzle has a unique solution (public)
 // Query params: original
-solverRouter.get("/validate", async (c) => {
+solverRouter.get("/validate", async c => {
   try {
     const queryString = new URL(c.req.url).search.slice(1);
-    const result = await proxySolverRequest<ValidateData>("validate", queryString);
+    const result = await proxySolverRequest<ValidateData>(
+      "validate",
+      queryString
+    );
 
     if (!result.success || !result.data) {
       return c.json(
@@ -78,10 +81,13 @@ solverRouter.get("/validate", async (c) => {
 
 // GET /generate - Generate a random puzzle (public)
 // Query params: symmetrical
-solverRouter.get("/generate", async (c) => {
+solverRouter.get("/generate", async c => {
   try {
     const queryString = new URL(c.req.url).search.slice(1);
-    const result = await proxySolverRequest<GenerateData>("generate", queryString);
+    const result = await proxySolverRequest<GenerateData>(
+      "generate",
+      queryString
+    );
 
     if (!result.success || !result.data) {
       return c.json(

@@ -52,7 +52,10 @@ export function createAccessControlMiddleware(endpoint: string) {
       }
 
       // Non-subscriber: check daily access limit
-      const { granted, remaining } = await checkAndRecordAccess(userId, endpoint);
+      const { granted, remaining } = await checkAndRecordAccess(
+        userId,
+        endpoint
+      );
       if (!granted) {
         return c.json(
           {

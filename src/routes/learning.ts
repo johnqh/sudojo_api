@@ -52,23 +52,16 @@ learningRouter.get("/", async c => {
 });
 
 // GET one learning entry by uuid (public)
-learningRouter.get(
-  "/:uuid",
-  zValidator("param", uuidParamSchema),
-  async c => {
-    const { uuid } = c.req.valid("param");
-    const rows = await db
-      .select()
-      .from(learning)
-      .where(eq(learning.uuid, uuid));
+learningRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
+  const { uuid } = c.req.valid("param");
+  const rows = await db.select().from(learning).where(eq(learning.uuid, uuid));
 
-    if (rows.length === 0) {
-      return c.json(errorResponse("Learning entry not found"), 404);
-    }
-
-    return c.json(successResponse(rows[0]));
+  if (rows.length === 0) {
+    return c.json(errorResponse("Learning entry not found"), 404);
   }
-);
+
+  return c.json(successResponse(rows[0]));
+});
 
 // POST create learning entry (requires admin auth)
 learningRouter.post(

@@ -24,10 +24,7 @@ techniquesRouter.get("/", async c => {
       .where(eq(techniques.level_uuid, levelUuid))
       .orderBy(asc(techniques.title));
   } else {
-    rows = await db
-      .select()
-      .from(techniques)
-      .orderBy(asc(techniques.title));
+    rows = await db.select().from(techniques).orderBy(asc(techniques.title));
   }
 
   return c.json(successResponse(rows));

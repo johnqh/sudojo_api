@@ -19,20 +19,16 @@ levelsRouter.get("/", async c => {
 });
 
 // GET one level by uuid (public)
-levelsRouter.get(
-  "/:uuid",
-  zValidator("param", uuidParamSchema),
-  async c => {
-    const { uuid } = c.req.valid("param");
-    const rows = await db.select().from(levels).where(eq(levels.uuid, uuid));
+levelsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
+  const { uuid } = c.req.valid("param");
+  const rows = await db.select().from(levels).where(eq(levels.uuid, uuid));
 
-    if (rows.length === 0) {
-      return c.json(errorResponse("Level not found"), 404);
-    }
-
-    return c.json(successResponse(rows[0]));
+  if (rows.length === 0) {
+    return c.json(errorResponse("Level not found"), 404);
   }
-);
+
+  return c.json(successResponse(rows[0]));
+});
 
 // POST create level (requires admin auth)
 levelsRouter.post(

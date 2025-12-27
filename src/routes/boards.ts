@@ -61,20 +61,16 @@ boardsRouter.get("/random", async c => {
 });
 
 // GET one board by uuid (public)
-boardsRouter.get(
-  "/:uuid",
-  zValidator("param", uuidParamSchema),
-  async c => {
-    const { uuid } = c.req.valid("param");
-    const rows = await db.select().from(boards).where(eq(boards.uuid, uuid));
+boardsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
+  const { uuid } = c.req.valid("param");
+  const rows = await db.select().from(boards).where(eq(boards.uuid, uuid));
 
-    if (rows.length === 0) {
-      return c.json(errorResponse("Board not found"), 404);
-    }
-
-    return c.json(successResponse(rows[0]));
+  if (rows.length === 0) {
+    return c.json(errorResponse("Board not found"), 404);
   }
-);
+
+  return c.json(successResponse(rows[0]));
+});
 
 // POST create board (admin only)
 boardsRouter.post(

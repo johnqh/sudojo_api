@@ -63,20 +63,16 @@ dailiesRouter.get(
 );
 
 // GET one daily by uuid (public)
-dailiesRouter.get(
-  "/:uuid",
-  zValidator("param", uuidParamSchema),
-  async c => {
-    const { uuid } = c.req.valid("param");
-    const rows = await db.select().from(dailies).where(eq(dailies.uuid, uuid));
+dailiesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
+  const { uuid } = c.req.valid("param");
+  const rows = await db.select().from(dailies).where(eq(dailies.uuid, uuid));
 
-    if (rows.length === 0) {
-      return c.json(errorResponse("Daily not found"), 404);
-    }
-
-    return c.json(successResponse(rows[0]));
+  if (rows.length === 0) {
+    return c.json(errorResponse("Daily not found"), 404);
   }
-);
+
+  return c.json(successResponse(rows[0]));
+});
 
 // POST create daily (admin only)
 dailiesRouter.post(
