@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { verifyIdToken, isAnonymousUser } from "../services/firebase";
+import { verifyIdToken } from "../services/firebase";
 import { getSubscriberEntitlements } from "../services/revenuecat";
 import { checkAndRecordAccess } from "../services/access";
 import { errorResponse } from "@sudobility/sudojo_types";
@@ -33,24 +33,6 @@ export function createAccessControlMiddleware(endpoint: string) {
 
     try {
       const decodedToken = await verifyIdToken(token);
-
-      if (isAnonymousUser(decodedToken)) {
-        return c.json(
-          {
-            success: false,
-            error: "Account required",
-            message:
-              "Please log in or create an account to access sudoku puzzles.",
-            action: {
-              type: "auth_required",
-              options: ["login", "create_account"],
-            },
-            timestamp: new Date().toISOString(),
-          },
-          403
-        );
-      }
-
       const userId = decodedToken.uid;
 
       // Store user info in context for later use
