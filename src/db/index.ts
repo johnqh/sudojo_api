@@ -2,6 +2,7 @@ import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import { getRequiredEnv } from "../lib/env-helper";
+import { initRateLimitTable } from "@sudobility/ratelimit_service";
 
 // Lazy initialization to allow test env to be applied first
 let _client: ReturnType<typeof postgres> | null = null;
@@ -118,6 +119,9 @@ export async function initDatabase() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `;
+
+  // Rate limit counters table (from @sudobility/subscription_service)
+  await initRateLimitTable(client, null, "sudojo");
 
   console.log("Database tables initialized");
 }

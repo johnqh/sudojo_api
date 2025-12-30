@@ -8,6 +8,7 @@ import {
   timestamp,
   date,
 } from "drizzle-orm/pg-core";
+import { createRateLimitCountersTablePublic } from "@sudobility/ratelimit_service";
 
 export const levels = pgTable("levels", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
@@ -97,3 +98,9 @@ export const accessLogs = pgTable("access_logs", {
   access_date: date("access_date").notNull(),
   created_at: timestamp("created_at").defaultNow(),
 });
+
+// =============================================================================
+// Rate Limit Counters Table (from @sudobility/subscription_service)
+// =============================================================================
+
+export const rateLimitCounters = createRateLimitCountersTablePublic("sudojo");
