@@ -15,22 +15,52 @@ const boardsRouter = new Hono();
 // GET all boards (public)
 boardsRouter.get("/", async c => {
   const levelUuid = c.req.query("level_uuid");
+  const techniqueBit = c.req.query("technique_bit");
+  const limit = c.req.query("limit");
 
-  let rows;
+  let query = db.select().from(boards).$dynamic();
+
+  // Filter by level_uuid if provided
   if (levelUuid) {
-    rows = await db
-      .select()
-      .from(boards)
-      .where(eq(boards.level_uuid, levelUuid))
-      .orderBy(desc(boards.created_at));
-  } else {
-    rows = await db
-      .select()
-      .from(boards)
-      .orderBy(boards.level_uuid, desc(boards.created_at));
+    query = query.where(eq(boards.level_uuid, levelUuid));
   }
 
+  // Filter by technique bit if provided (boards that have this technique)
+  if (techniqueBit) {
+    const bit = parseInt(techniqueBit, 10);
+    if (!isNaN(bit) && bit > 0) {
+      query = query.where(sql`(${boards.techniques} & ${bit}) != 0`);
+    }
+  }
+
+  // Order and limit
+  query = query.orderBy(desc(boards.created_at));
+  if (limit) {
+    const limitNum = parseInt(limit, 10);
+    if (!isNaN(limitNum) && limitNum > 0) {
+      query = query.limit(limitNum);
+    }
+  }
+
+  const rows = await query;
   return c.json(successResponse(rows));
+});
+
+// GET board counts (public)
+boardsRouter.get("/counts", async c => {
+  const [totalResult] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(boards);
+
+  const [zeroTechniquesResult] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(boards)
+    .where(sql`${boards.techniques} = 0 OR ${boards.techniques} IS NULL`);
+
+  return c.json(successResponse({
+    total: totalResult?.count ?? 0,
+    withoutTechniques: zeroTechniquesResult?.count ?? 0,
+  }));
 });
 
 // GET random board (public)
