@@ -100,6 +100,31 @@ export const accessLogs = pgTable("access_logs", {
 });
 
 // =============================================================================
+// Technique Examples Table (for tutorials)
+// =============================================================================
+
+export const techniqueExamples = pgTable("technique_examples", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  /** Board state (current position, not original puzzle) */
+  board: varchar("board", { length: 81 }).notNull(),
+  /** Pencilmarks at this state (comma-delimited) */
+  pencilmarks: text("pencilmarks"),
+  /** Solution for reference */
+  solution: varchar("solution", { length: 81 }).notNull(),
+  /** Bitfield of ALL techniques applicable at this board state */
+  techniques_bitfield: integer("techniques_bitfield").notNull(),
+  /** Primary technique (the one solver would use first) */
+  primary_technique: integer("primary_technique").notNull(),
+  /** Hint data (JSON with areas, cells, description) */
+  hint_data: text("hint_data"),
+  /** Source board UUID (optional, for reference) */
+  source_board_uuid: uuid("source_board_uuid").references(() => boards.uuid, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// =============================================================================
 // Rate Limit Counters Table (from @sudobility/subscription_service)
 // =============================================================================
 

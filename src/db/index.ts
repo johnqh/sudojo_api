@@ -120,6 +120,20 @@ export async function initDatabase() {
     )
   `;
 
+  await client`
+    CREATE TABLE IF NOT EXISTS technique_examples (
+      uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      board VARCHAR(81) NOT NULL,
+      pencilmarks TEXT,
+      solution VARCHAR(81) NOT NULL,
+      techniques_bitfield INTEGER NOT NULL,
+      primary_technique INTEGER NOT NULL,
+      hint_data TEXT,
+      source_board_uuid UUID REFERENCES boards(uuid) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
   // Rate limit counters table (from @sudobility/subscription_service)
   await initRateLimitTable(client, null, "sudojo");
 

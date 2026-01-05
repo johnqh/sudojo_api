@@ -116,3 +116,24 @@ export const dateParamSchema = z.object({
 export const userIdParamSchema = z.object({
   userId: z.string().min(1).max(128),
 });
+
+// Technique example schemas
+export const techniqueExampleCreateSchema = z.object({
+  board: z.string().length(81),
+  pencilmarks: z.string().optional(),
+  solution: z.string().length(81),
+  techniques_bitfield: z.number().int().min(1),
+  primary_technique: z.number().int().min(1).max(23),
+  hint_data: z.string().optional(),
+  source_board_uuid: z.string().uuid().nullable().optional(),
+});
+
+export const techniqueExampleUpdateSchema = z.object({
+  board: z.string().length(81).optional(),
+  pencilmarks: z.string().optional(),
+  solution: z.string().length(81).optional(),
+  techniques_bitfield: z.number().int().min(1).optional(),
+  primary_technique: z.number().int().min(1).max(23).optional(),
+  hint_data: z.string().optional(),
+  source_board_uuid: z.string().uuid().nullable().optional(),
+});

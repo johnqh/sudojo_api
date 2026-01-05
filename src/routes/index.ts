@@ -8,6 +8,7 @@ import challengesRouter from "./challenges";
 import usersRouter from "./users";
 import solverRouter from "./solver";
 import ratelimitsRouter from "./ratelimits";
+import examplesRouter from "./examples";
 
 const routes = new Hono();
 
@@ -20,5 +21,6 @@ routes.route("/challenges", challengesRouter);
 routes.route("/users", usersRouter);
 routes.route("/solver", solverRouter);
 routes.route("/ratelimits", ratelimitsRouter);
+routes.route("/examples", examplesRouter);
 
 export default routes;
