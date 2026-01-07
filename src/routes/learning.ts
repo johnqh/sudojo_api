@@ -7,7 +7,7 @@ import {
   learningUpdateSchema,
   uuidParamSchema,
 } from "../schemas";
-import { authMiddleware } from "../middleware/auth";
+import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const learningRouter = new Hono();
@@ -66,7 +66,7 @@ learningRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
 // POST create learning entry (requires admin auth)
 learningRouter.post(
   "/",
-  authMiddleware,
+  adminMiddleware,
   zValidator("json", learningCreateSchema),
   async c => {
     const body = c.req.valid("json");
@@ -89,7 +89,7 @@ learningRouter.post(
 // PUT update learning entry (requires admin auth)
 learningRouter.put(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", learningUpdateSchema),
   async c => {
@@ -126,7 +126,7 @@ learningRouter.put(
 // DELETE learning entry (requires admin auth)
 learningRouter.delete(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");

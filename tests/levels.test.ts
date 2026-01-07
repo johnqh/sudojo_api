@@ -72,8 +72,8 @@ describe("Levels API", () => {
         },
         body: JSON.stringify({ index: 1, title: "Easy" }),
       });
-      // Invalid tokens are rejected by authMiddleware with 403
-      expect(res.status).toBe(403);
+      // Invalid tokens are rejected with 401 Unauthorized
+      expect(res.status).toBe(401);
     });
 
     it("should create a level with valid token", async () => {

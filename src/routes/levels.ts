@@ -7,7 +7,7 @@ import {
   levelUpdateSchema,
   uuidParamSchema,
 } from "../schemas";
-import { authMiddleware } from "../middleware/auth";
+import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const levelsRouter = new Hono();
@@ -33,7 +33,7 @@ levelsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
 // POST create level (requires admin auth)
 levelsRouter.post(
   "/",
-  authMiddleware,
+  adminMiddleware,
   zValidator("json", levelCreateSchema),
   async c => {
     const body = c.req.valid("json");
@@ -55,7 +55,7 @@ levelsRouter.post(
 // PUT update level (requires admin auth)
 levelsRouter.put(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", levelUpdateSchema),
   async c => {
@@ -92,7 +92,7 @@ levelsRouter.put(
 // DELETE level (requires admin auth)
 levelsRouter.delete(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");

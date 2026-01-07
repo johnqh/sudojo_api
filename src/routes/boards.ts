@@ -7,7 +7,7 @@ import {
   boardUpdateSchema,
   uuidParamSchema,
 } from "../schemas";
-import { authMiddleware } from "../middleware/auth";
+import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const boardsRouter = new Hono();
@@ -16,7 +16,9 @@ const boardsRouter = new Hono();
 boardsRouter.get("/", async c => {
   const levelUuid = c.req.query("level_uuid");
   const techniqueBit = c.req.query("technique_bit");
+  const techniques = c.req.query("techniques");
   const limit = c.req.query("limit");
+  const offset = c.req.query("offset");
 
   let query = db.select().from(boards).$dynamic();
 
@@ -33,8 +35,27 @@ boardsRouter.get("/", async c => {
     }
   }
 
-  // Order and limit
+  // Filter by techniques value (e.g., techniques=0 for boards without techniques)
+  if (techniques !== undefined) {
+    const techniquesNum = parseInt(techniques, 10);
+    if (!isNaN(techniquesNum)) {
+      if (techniquesNum === 0) {
+        // Include both 0 and NULL
+        query = query.where(sql`${boards.techniques} = 0 OR ${boards.techniques} IS NULL`);
+      } else {
+        query = query.where(eq(boards.techniques, techniquesNum));
+      }
+    }
+  }
+
+  // Order and limit/offset
   query = query.orderBy(desc(boards.created_at));
+  if (offset) {
+    const offsetNum = parseInt(offset, 10);
+    if (!isNaN(offsetNum) && offsetNum >= 0) {
+      query = query.offset(offsetNum);
+    }
+  }
   if (limit) {
     const limitNum = parseInt(limit, 10);
     if (!isNaN(limitNum) && limitNum > 0) {
@@ -105,7 +126,7 @@ boardsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
 // POST create board (admin only)
 boardsRouter.post(
   "/",
-  authMiddleware,
+  adminMiddleware,
   zValidator("json", boardCreateSchema),
   async c => {
     const body = c.req.valid("json");
@@ -128,7 +149,7 @@ boardsRouter.post(
 // PUT update board (admin only)
 boardsRouter.put(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", boardUpdateSchema),
   async c => {
@@ -165,7 +186,7 @@ boardsRouter.put(
 // DELETE board (admin only)
 boardsRouter.delete(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");

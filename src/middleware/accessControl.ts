@@ -1,11 +1,18 @@
 import type { Context, Next } from "hono";
-import { verifyIdToken } from "../services/firebase";
+import { verifyIdToken, extendTokenCacheTTL } from "../services/firebase";
 import { getSubscriberEntitlements } from "../services/revenuecat";
 import { checkAndRecordAccess } from "../services/access";
 import { errorResponse } from "@sudobility/sudojo_types";
 import { getEnv } from "../lib/env-helper";
 
-const API_ACCESS_TOKEN = getEnv("API_ACCESS_TOKEN");
+// Admin tokens cached for 100 hours (admins are trusted, reduce API calls)
+const ADMIN_TOKEN_CACHE_TTL_MS = 100 * 60 * 60 * 1000;
+
+// Admin emails bypass subscription checks (comma-separated list)
+const ADMIN_EMAILS = (getEnv("ADMIN_EMAILS") || "")
+  .split(",")
+  .map(email => email.trim().toLowerCase())
+  .filter(Boolean);
 
 export function createAccessControlMiddleware(endpoint: string) {
   return async (c: Context, next: Next) => {
@@ -24,19 +31,21 @@ export function createAccessControlMiddleware(endpoint: string) {
       );
     }
 
-    // Check if it's an API access token (for admin operations)
-    if (API_ACCESS_TOKEN && token === API_ACCESS_TOKEN) {
-      // Admin token - grant full access, skip Firebase and subscription checks
-      await next();
-      return;
-    }
-
     try {
       const decodedToken = await verifyIdToken(token);
       const userId = decodedToken.uid;
+      const userEmail = decodedToken.email?.toLowerCase();
 
       // Store user info in context for later use
       c.set("firebaseUser", decodedToken);
+
+      // Check if user is an admin (bypass subscription check)
+      if (userEmail && ADMIN_EMAILS.includes(userEmail)) {
+        // Extend cache TTL for admin tokens to 100 hours
+        extendTokenCacheTTL(token, ADMIN_TOKEN_CACHE_TTL_MS);
+        await next();
+        return;
+      }
 
       // Check if user has subscription
       try {

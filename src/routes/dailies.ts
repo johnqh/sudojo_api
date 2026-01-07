@@ -8,7 +8,7 @@ import {
   uuidParamSchema,
   dateParamSchema,
 } from "../schemas";
-import { authMiddleware } from "../middleware/auth";
+import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const dailiesRouter = new Hono();
@@ -77,7 +77,7 @@ dailiesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
 // POST create daily (admin only)
 dailiesRouter.post(
   "/",
-  authMiddleware,
+  adminMiddleware,
   zValidator("json", dailyCreateSchema),
   async c => {
     const body = c.req.valid("json");
@@ -101,7 +101,7 @@ dailiesRouter.post(
 // PUT update daily (admin only)
 dailiesRouter.put(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", dailyUpdateSchema),
   async c => {
@@ -140,7 +140,7 @@ dailiesRouter.put(
 // DELETE daily (admin only)
 dailiesRouter.delete(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");

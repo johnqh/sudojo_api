@@ -6,6 +6,7 @@ import {
 } from "@sudobility/ratelimit_service";
 import { db, rateLimitCounters } from "../db";
 import { getRequiredEnv } from "../lib/env-helper";
+import { isAdminEmail } from "./auth";
 
 /**
  * Rate limit configuration for sudojo_api
@@ -54,38 +55,27 @@ export const rateLimitMiddleware = createRateLimitMiddleware({
     return firebaseUser.uid;
   },
   shouldSkip: c => {
-    // Skip rate limiting for admin API token
-    const authHeader = (c as any).req.header("Authorization");
-    if (!authHeader) return false;
-
-    const [type, token] = authHeader.split(" ");
-    if (type !== "Bearer" || !token) return false;
-
-    const apiAccessToken = process.env.API_ACCESS_TOKEN;
-    return apiAccessToken !== undefined && token === apiAccessToken;
+    // Skip rate limiting for admin users
+    const firebaseUser = (c as any).get("firebaseUser");
+    if (!firebaseUser) return false;
+    return isAdminEmail(firebaseUser.email);
   },
 });
 
 /**
  * Combined middleware that applies Firebase auth then rate limiting.
  * Use this for endpoints that need both authentication and rate limiting.
+ * Note: firebaseAuthMiddleware should be applied before this to populate firebaseUser in context.
  */
 export async function authAndRateLimitMiddleware(c: Context, next: Next) {
-  // First check for admin token (skip all checks)
-  const authHeader = c.req.header("Authorization");
-  if (authHeader) {
-    const [type, token] = authHeader.split(" ");
-    if (type === "Bearer" && token) {
-      const apiAccessToken = process.env.API_ACCESS_TOKEN;
-      if (apiAccessToken && token === apiAccessToken) {
-        await next();
-        return;
-      }
-    }
+  // Skip rate limiting for admin users
+  const firebaseUser = (c as any).get("firebaseUser");
+  if (firebaseUser && isAdminEmail(firebaseUser.email)) {
+    await next();
+    return;
   }
 
   // For non-admin requests, apply rate limiting
-  // Note: firebaseAuthMiddleware should be applied before this
   // Cast to any to avoid type conflicts between different hono instances
   await rateLimitMiddleware(c as any, next as any);
 }

@@ -2,18 +2,13 @@
  * populate-board-techniques.ts
  *
  * Populates the `techniques` bitfield in the `boards` table by running each board
- * through the solver API to discover all techniques used to solve it.
+ * through the solver /validate endpoint.
  *
  * Usage: bun run scripts/populate-board-techniques.ts [--limit N] [--dry-run]
  */
 
 import { db, boards } from "../src/db";
-import { eq, sql } from "drizzle-orm";
-import {
-  TECHNIQUE_TITLE_TO_ID,
-  techniqueToBit,
-  type SolveData,
-} from "@sudobility/sudojo_types";
+import { eq } from "drizzle-orm";
 
 // Configuration
 const SOLVER_URL = process.env.SOLVER_URL || "http://localhost:8080";
@@ -21,27 +16,23 @@ const DRY_RUN = process.argv.includes("--dry-run");
 const LIMIT_ARG = process.argv.indexOf("--limit");
 const LIMIT = LIMIT_ARG !== -1 ? parseInt(process.argv[LIMIT_ARG + 1], 10) : 0;
 
-interface SolverResponse<T> {
+interface ValidateResponse {
   success: boolean;
   error: { code: string; message: string } | null;
-  data: T | null;
+  data: {
+    board: {
+      level: number;
+      techniques: number;
+      board: {
+        original: string;
+        solution: string;
+      };
+    };
+  } | null;
 }
 
-async function callSolver(
-  original: string,
-  user: string,
-  pencilmarks?: string
-): Promise<SolveData | null> {
-  const params = new URLSearchParams({
-    original,
-    user,
-    autopencilmarks: "true",
-  });
-  if (pencilmarks) {
-    params.set("pencilmarks", pencilmarks);
-  }
-
-  const url = `${SOLVER_URL}/api/solve?${params.toString()}`;
+async function validateBoard(original: string): Promise<{ techniques: number; level: number } | null> {
+  const url = `${SOLVER_URL}/api/validate?original=${original}`;
 
   try {
     const response = await fetch(url);
@@ -50,106 +41,19 @@ async function callSolver(
       return null;
     }
 
-    const result = (await response.json()) as SolverResponse<SolveData>;
+    const result = (await response.json()) as ValidateResponse;
     if (!result.success || !result.data) {
       return null;
     }
 
-    return result.data;
+    return {
+      techniques: result.data.board.techniques,
+      level: result.data.board.level,
+    };
   } catch (error) {
     console.error("Solver fetch error:", error);
     return null;
   }
-}
-
-function applyHint(
-  user: string,
-  solveData: SolveData
-): { newUser: string; pencilmarks: string | null } {
-  const cells = solveData.hints.steps[0]?.cells || [];
-  const userArr = user.split("");
-
-  for (const cell of cells) {
-    const idx = cell.row * 9 + cell.column;
-    const selectDigit = cell.actions.select;
-    if (selectDigit && selectDigit !== "" && selectDigit !== "0") {
-      userArr[idx] = selectDigit;
-    }
-  }
-
-  // Get updated pencilmarks from the response
-  const pencilmarks = solveData.board.board.pencilmarks?.pencilmarks || null;
-
-  return { newUser: userArr.join(""), pencilmarks };
-}
-
-function isSolved(board: string): boolean {
-  return !board.includes("0");
-}
-
-async function processBoard(boardRecord: {
-  uuid: string;
-  board: string;
-  solution: string;
-}): Promise<number> {
-  let user = boardRecord.board;
-  let pencilmarks: string | null = null;
-  let techniquesBitfield = 0;
-  let iterations = 0;
-  const MAX_ITERATIONS = 200;
-
-  while (!isSolved(user) && iterations < MAX_ITERATIONS) {
-    iterations++;
-
-    const solveData = await callSolver(boardRecord.board, user, pencilmarks || undefined);
-    if (!solveData) {
-      console.error(`  Failed to get solve data at iteration ${iterations}`);
-      break;
-    }
-
-    // Get the technique from the first hint step
-    const step = solveData.hints.steps[0];
-    if (!step) {
-      // No more hints but not solved - shouldn't happen for valid puzzles
-      console.error(`  No hints available but puzzle not solved`);
-      break;
-    }
-
-    const techniqueId = TECHNIQUE_TITLE_TO_ID[step.title];
-    if (techniqueId) {
-      techniquesBitfield |= techniqueToBit(techniqueId);
-    } else {
-      console.warn(`  Unknown technique: ${step.title}`);
-    }
-
-    // Apply the hint to progress
-    const result = applyHint(user, solveData);
-
-    // Check if we made progress
-    if (result.newUser === user) {
-      // No cell was filled in - this hint only eliminates candidates
-      // We still need to track pencilmarks and continue
-      pencilmarks = result.pencilmarks;
-
-      // For techniques that only eliminate candidates (like X-Wing),
-      // we need to update pencilmarks and try again
-      if (!pencilmarks) {
-        console.error(`  No progress made and no pencilmarks available`);
-        break;
-      }
-    } else {
-      user = result.newUser;
-      pencilmarks = result.pencilmarks;
-    }
-  }
-
-  if (!isSolved(user)) {
-    console.warn(
-      `  Board not fully solved after ${iterations} iterations (${user.split("0").length - 1} cells remaining)`
-    );
-  }
-
-  return techniquesBitfield;
 }
 
 async function main() {
@@ -165,7 +69,6 @@ async function main() {
     .select({
       uuid: boards.uuid,
       board: boards.board,
-      solution: boards.solution,
     })
     .from(boards)
     .where(eq(boards.techniques, 0));
@@ -188,40 +91,40 @@ async function main() {
 
   for (const boardRecord of boardsToProcess) {
     processed++;
-    console.log(
-      `[${processed}/${boardsToProcess.length}] Processing ${boardRecord.uuid}...`
-    );
 
     try {
-      const techniquesBitfield = await processBoard(boardRecord);
+      const result = await validateBoard(boardRecord.board);
 
-      if (techniquesBitfield > 0) {
-        console.log(`  Techniques bitfield: ${techniquesBitfield} (binary: ${techniquesBitfield.toString(2)})`);
-
+      if (result && result.techniques > 0) {
         if (!DRY_RUN) {
           await db
             .update(boards)
             .set({
-              techniques: techniquesBitfield,
+              techniques: result.techniques,
               updated_at: new Date(),
             })
             .where(eq(boards.uuid, boardRecord.uuid));
-          console.log(`  Updated in database`);
-        } else {
-          console.log(`  [DRY RUN] Would update in database`);
         }
         updated++;
+
+        if (processed % 100 === 0 || processed === boardsToProcess.length) {
+          console.log(
+            `[${processed}/${boardsToProcess.length}] Updated ${updated}, Failed ${failed}`
+          );
+        }
       } else {
-        console.log(`  No techniques found (failed to solve)`);
         failed++;
+        console.log(
+          `[${processed}/${boardsToProcess.length}] Failed: ${boardRecord.uuid.slice(0, 8)}...`
+        );
       }
     } catch (error) {
-      console.error(`  Error processing board:`, error);
+      console.error(`Error processing ${boardRecord.uuid}:`, error);
       failed++;
     }
 
     // Small delay to not overwhelm the solver
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
 
   console.log("\n========================");

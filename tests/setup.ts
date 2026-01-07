@@ -43,6 +43,9 @@ mock.module("../src/services/firebase", () => ({
   isAnonymousUser: (decodedToken: { firebase?: { sign_in_provider?: string } }) => {
     return decodedToken.firebase?.sign_in_provider === "anonymous";
   },
+  extendTokenCacheTTL: (_token: string, _ttlMs: number) => {
+    // No-op in tests
+  },
   getFirebaseApp: () => ({}),
 }));
 

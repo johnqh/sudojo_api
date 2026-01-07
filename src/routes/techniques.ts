@@ -7,7 +7,7 @@ import {
   techniqueUpdateSchema,
   uuidParamSchema,
 } from "../schemas";
-import { authMiddleware } from "../middleware/auth";
+import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const techniquesRouter = new Hono();
@@ -52,7 +52,7 @@ techniquesRouter.get(
 // POST create technique (requires admin auth)
 techniquesRouter.post(
   "/",
-  authMiddleware,
+  adminMiddleware,
   zValidator("json", techniqueCreateSchema),
   async c => {
     const body = c.req.valid("json");
@@ -74,7 +74,7 @@ techniquesRouter.post(
 // PUT update technique (requires admin auth)
 techniquesRouter.put(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", techniqueUpdateSchema),
   async c => {
@@ -109,7 +109,7 @@ techniquesRouter.put(
 // DELETE technique (requires admin auth)
 techniquesRouter.delete(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");

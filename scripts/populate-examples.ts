@@ -103,6 +103,9 @@ function needsMoreExamples(technique: TechniqueId): boolean {
   return getCount(technique) < TARGET_PER_TECHNIQUE;
 }
 
+// Empty pencilmarks string (80 commas = 81 empty entries)
+const EMPTY_PENCILMARKS = ",".repeat(80);
+
 async function callSolver(
   original: string,
   user: string,
@@ -111,11 +114,9 @@ async function callSolver(
   const params = new URLSearchParams({
     original,
     user,
-    autopencilmarks: "true",
+    autopencilmarks: "false",
+    pencilmarks: pencilmarks || EMPTY_PENCILMARKS,
   });
-  if (pencilmarks) {
-    params.set("pencilmarks", pencilmarks);
-  }
 
   const url = `${SOLVER_URL}/api/solve?${params.toString()}`;
 
@@ -156,8 +157,24 @@ function applyHint(
   return { newUser: userArr.join(""), pencilmarks };
 }
 
-function isSolved(board: string): boolean {
-  return !board.includes("0");
+// Combine original puzzle with user input to get current board state
+function combineBoard(original: string, user: string): string {
+  let result = "";
+  for (let i = 0; i < 81; i++) {
+    // Use original if it has a clue, otherwise use user input
+    result += original[i] !== "0" ? original[i] : user[i];
+  }
+  return result;
+}
+
+// Check if puzzle is solved (no zeros in combined state)
+function isSolved(original: string, user: string): boolean {
+  for (let i = 0; i < 81; i++) {
+    if (original[i] === "0" && user[i] === "0") {
+      return false;
+    }
+  }
+  return true;
 }
 
 async function saveExample(
@@ -194,17 +211,19 @@ async function processBoard(
   boardRecord: { uuid: string; board: string; solution: string; techniques: number | null },
   targetTechniques: Set<TechniqueId>
 ): Promise<number> {
-  let user = boardRecord.board;
+  const original = boardRecord.board;
+  // User input starts as all zeros (empty)
+  let user = "0".repeat(81);
   let pencilmarks: string | null = null;
   let techniquesBitfield = 0;
   let examplesAdded = 0;
   let iterations = 0;
   const MAX_ITERATIONS = 200;
 
-  while (!isSolved(user) && iterations < MAX_ITERATIONS) {
+  while (!isSolved(original, user) && iterations < MAX_ITERATIONS) {
     iterations++;
 
-    const solveData = await callSolver(boardRecord.board, user, pencilmarks || undefined);
+    const solveData = await callSolver(original, user, pencilmarks || undefined);
     if (!solveData) {
       break;
     }
@@ -214,6 +233,9 @@ async function processBoard(
       break;
     }
 
+    // Get current pencilmarks from solver response
+    const currentPencilmarks = solveData.board.board.pencilmarks?.pencilmarks || null;
+
     const techniqueId = TECHNIQUE_TITLE_TO_ID[step.title];
     if (!techniqueId) {
       console.warn(`Unknown technique: ${step.title}`);
@@ -222,9 +244,11 @@ async function processBoard(
 
       // Check if we need more examples for this technique
       if (targetTechniques.has(techniqueId) && needsMoreExamples(techniqueId)) {
+        // Save the combined board state (original + user), not just user
+        const currentBoard = combineBoard(original, user);
         const saved = await saveExample(
-          user,
-          pencilmarks,
+          currentBoard,
+          currentPencilmarks,
           boardRecord.solution,
           techniquesBitfield,
           techniqueId,

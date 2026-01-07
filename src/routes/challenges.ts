@@ -7,7 +7,7 @@ import {
   challengeUpdateSchema,
   uuidParamSchema,
 } from "../schemas";
-import { authMiddleware } from "../middleware/auth";
+import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const challengesRouter = new Hono();
@@ -120,7 +120,7 @@ challengesRouter.get(
 // POST create challenge (admin only)
 challengesRouter.post(
   "/",
-  authMiddleware,
+  adminMiddleware,
   zValidator("json", challengeCreateSchema),
   async c => {
     const body = c.req.valid("json");
@@ -143,7 +143,7 @@ challengesRouter.post(
 // PUT update challenge (admin only)
 challengesRouter.put(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", challengeUpdateSchema),
   async c => {
@@ -181,7 +181,7 @@ challengesRouter.put(
 // DELETE challenge (admin only)
 challengesRouter.delete(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");

@@ -42,10 +42,10 @@ solverRouter.get("/solve", accessControl, async c => {
     const result = await proxySolverRequest<SolveData>("solve", queryString);
 
     if (!result.success || !result.data) {
-      return c.json(
-        errorResponse(result.error?.message || "Solver error"),
-        400
-      );
+      const errorMsg = result.error
+        ? `${result.error.code}: ${result.error.message}`
+        : "Solver error";
+      return c.json(errorResponse(errorMsg), 400);
     }
 
     return c.json(successResponse(result.data));
@@ -66,10 +66,10 @@ solverRouter.get("/validate", async c => {
     );
 
     if (!result.success || !result.data) {
-      return c.json(
-        errorResponse(result.error?.message || "Invalid puzzle"),
-        400
-      );
+      const errorMsg = result.error
+        ? `${result.error.code}: ${result.error.message}`
+        : "Invalid puzzle";
+      return c.json(errorResponse(errorMsg), 400);
     }
 
     return c.json(successResponse(result.data));
@@ -90,10 +90,10 @@ solverRouter.get("/generate", async c => {
     );
 
     if (!result.success || !result.data) {
-      return c.json(
-        errorResponse(result.error?.message || "Generation failed"),
-        500
-      );
+      const errorMsg = result.error
+        ? `${result.error.code}: ${result.error.message}`
+        : "Generation failed";
+      return c.json(errorResponse(errorMsg), 500);
     }
 
     return c.json(successResponse(result.data));

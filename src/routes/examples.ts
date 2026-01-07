@@ -7,7 +7,7 @@ import {
   techniqueExampleUpdateSchema,
   uuidParamSchema,
 } from "../schemas";
-import { authMiddleware } from "../middleware/auth";
+import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const examplesRouter = new Hono();
@@ -104,28 +104,24 @@ examplesRouter.get("/random", async c => {
 });
 
 // GET one example by uuid (public)
-examplesRouter.get(
-  "/:uuid",
-  zValidator("param", uuidParamSchema),
-  async c => {
-    const { uuid } = c.req.valid("param");
-    const rows = await db
-      .select()
-      .from(techniqueExamples)
-      .where(eq(techniqueExamples.uuid, uuid));
+examplesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
+  const { uuid } = c.req.valid("param");
+  const rows = await db
+    .select()
+    .from(techniqueExamples)
+    .where(eq(techniqueExamples.uuid, uuid));
 
-    if (rows.length === 0) {
-      return c.json(errorResponse("Example not found"), 404);
-    }
-
-    return c.json(successResponse(rows[0]));
+  if (rows.length === 0) {
+    return c.json(errorResponse("Example not found"), 404);
   }
-);
+
+  return c.json(successResponse(rows[0]));
+});
 
 // POST create example (admin only)
 examplesRouter.post(
   "/",
-  authMiddleware,
+  adminMiddleware,
   zValidator("json", techniqueExampleCreateSchema),
   async c => {
     const body = c.req.valid("json");
@@ -150,7 +146,7 @@ examplesRouter.post(
 // PUT update example (admin only)
 examplesRouter.put(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   zValidator("json", techniqueExampleUpdateSchema),
   async c => {
@@ -195,7 +191,7 @@ examplesRouter.put(
 // DELETE example (admin only)
 examplesRouter.delete(
   "/:uuid",
-  authMiddleware,
+  adminMiddleware,
   zValidator("param", uuidParamSchema),
   async c => {
     const { uuid } = c.req.valid("param");
@@ -214,7 +210,7 @@ examplesRouter.delete(
 );
 
 // DELETE all examples (admin only, requires ?confirm=true)
-examplesRouter.delete("/", authMiddleware, async c => {
+examplesRouter.delete("/", adminMiddleware, async c => {
   const confirm = c.req.query("confirm");
 
   if (confirm !== "true") {
