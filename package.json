@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.5",
-    "@sudobility/ratelimit_service": "^1.0.4",
+    "@sudobility/ratelimit_service": "^1.0.5",
     "@sudobility/sudojo_types": "^1.1.10",
     "@sudobility/types": "^1.9.41",
     "drizzle-orm": "^0.45.0",
