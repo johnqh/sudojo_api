@@ -1,106 +1,150 @@
+# CLAUDE.md
 
-Default to using Bun instead of Node.js.
+This file provides context for AI assistants working on this codebase.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
+## Project Overview
 
-## APIs
+`sudojo_api` is the backend API server for Sudojo, a Sudoku learning platform. Built with Hono framework running on Bun runtime, it provides REST endpoints for:
+- Daily puzzles and challenges
+- Puzzle levels and difficulty progression
+- Sudoku solving techniques
+- User learning progress tracking
+- Authentication via Firebase
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+## Runtime & Package Manager
 
-## Testing
+**This project uses Bun exclusively.** Do not use npm, yarn, or pnpm.
 
-Use `bun test` to run tests.
+```bash
+bun install          # Install dependencies
+bun run dev          # Start dev server with hot reload
+bun run start        # Start production server
+bun run build        # Bundle for production
+bun run build:compile # Create standalone executable
+bun test             # Run tests
+bun run typecheck    # Type-check without emitting
+bun run lint         # Run ESLint
+bun run format       # Format with Prettier
+```
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
+## Tech Stack
 
-test("hello world", () => {
-  expect(1).toBe(1);
+- **Runtime**: Bun
+- **Framework**: Hono (fast, lightweight web framework)
+- **Database**: PostgreSQL with Drizzle ORM
+- **Validation**: Zod schemas with @hono/zod-validator
+- **Auth**: Firebase Admin SDK
+- **Types**: @sudobility/sudojo_types, @sudobility/types
+
+## Project Structure
+
+```
+src/
+├── index.ts           # App entry point, Hono app setup
+├── routes/            # API route handlers
+│   ├── dailies.ts     # Daily puzzle endpoints
+│   ├── levels.ts      # Puzzle level endpoints
+│   ├── boards.ts      # Board/puzzle endpoints
+│   ├── techniques.ts  # Solving technique endpoints
+│   ├── challenges.ts  # Challenge endpoints
+│   └── learning.ts    # Learning progress endpoints
+├── db/                # Database layer
+│   ├── schema.ts      # Drizzle schema definitions
+│   └── init.ts        # Database initialization
+├── middleware/        # Hono middleware
+│   └── auth.ts        # Firebase auth middleware
+├── services/          # Business logic services
+├── schemas/           # Zod validation schemas
+└── lib/               # Utility functions
+tests/                 # Test files (bun:test)
+```
+
+## API Patterns
+
+### Route Definition
+```typescript
+import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
+
+const app = new Hono();
+
+app.get('/items/:id', zValidator('param', z.object({ id: z.string() })), async (c) => {
+  const { id } = c.req.valid('param');
+  // ... handle request
+  return c.json({ data });
 });
 ```
 
-## Frontend
+### Authentication
+Routes requiring auth use Firebase middleware:
+```typescript
+import { authMiddleware } from '../middleware/auth';
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
-
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
+app.use('/protected/*', authMiddleware);
 ```
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+### Database Queries
+Using Drizzle ORM:
+```typescript
+import { db } from '../db';
+import { puzzles } from '../db/schema';
+import { eq } from 'drizzle-orm';
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
+const puzzle = await db.select().from(puzzles).where(eq(puzzles.id, id));
 ```
 
-With the following `frontend.tsx`:
+## Testing
 
-```tsx#frontend.tsx
-import React from "react";
+Tests use Bun's native test runner:
 
-// import .css files directly and it works
-import './index.css';
+```typescript
+import { test, expect, describe } from 'bun:test';
 
-import { createRoot } from "react-dom/client";
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
+describe('Levels API', () => {
+  test('should return levels list', async () => {
+    const response = await app.request('/api/levels');
+    expect(response.status).toBe(200);
+  });
+});
 ```
 
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
+Run tests:
+```bash
+bun test                    # All tests
+bun run test:unit           # Unit tests only
+bun test tests/levels       # Specific test file
 ```
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+## Environment Variables
+
+Bun automatically loads `.env` files. Required variables:
+- `DATABASE_URL` - PostgreSQL connection string
+- `FIREBASE_*` - Firebase Admin SDK credentials
+
+## Code Conventions
+
+- Use Zod for all request validation
+- Return consistent response shapes using @sudobility/types
+- Keep route handlers thin; put logic in services
+- Use async/await, not callbacks
+- TypeScript strict mode enabled
+
+## Common Tasks
+
+### Add New Endpoint
+1. Create route file in `src/routes/` or add to existing
+2. Define Zod schemas in `src/schemas/`
+3. Add business logic in `src/services/` if complex
+4. Register route in `src/index.ts`
+5. Add tests in `tests/`
+
+### Add Database Table
+1. Define schema in `src/db/schema.ts`
+2. Run `bun run db:init` to apply changes
+3. Create corresponding types if needed
+
+### Debug
+```bash
+bun run --inspect src/index.ts  # Start with debugger
+```

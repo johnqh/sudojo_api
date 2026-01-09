@@ -1,12 +1,15 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "build:compile": "bun build src/index.ts --compile --outfile dist/server",
+    "clean": "rm -rf dist",
     "test": "bun test",
     "test:unit": "bun test tests/levels tests/boards tests/techniques tests/learning tests/dailies tests/challenges tests/auth",
     "lint": "eslint src",
@@ -28,9 +31,9 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.5",
-    "@sudobility/ratelimit_service": "^1.0.5",
+    "@sudobility/ratelimit_service": "^1.0.6",
     "@sudobility/sudojo_types": "^1.1.10",
-    "@sudobility/types": "^1.9.41",
+    "@sudobility/types": "^1.9.42",
     "drizzle-orm": "^0.45.0",
     "firebase-admin": "^13.6.0",
     "hono": "^4.10.7",
