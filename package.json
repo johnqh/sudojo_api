@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -10,9 +10,9 @@
     "build": "bun build src/index.ts --outdir dist --target bun",
     "build:compile": "bun build src/index.ts --compile --outfile dist/server",
     "clean": "rm -rf dist",
-    "test": "bun test",
-    "test:unit": "bun test --config bunfig.unit.toml tests/unit",
-    "test:integration": "bun test tests/levels tests/boards tests/techniques tests/learning tests/dailies tests/challenges tests/auth tests/solver",
+    "test": "vitest run tests/unit",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "bun test --preload ./tests/setup.ts tests/levels tests/boards tests/techniques tests/learning tests/dailies tests/challenges tests/auth tests/solver",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src",
@@ -20,6 +20,7 @@
     "db:init": "bun run src/db/init.ts"
   },
   "devDependencies": {
+    "vitest": "^4.0.4",
     "@types/bun": "latest",
     "@types/node": "^24.10.1",
     "@typescript-eslint/eslint-plugin": "^8.50.0",

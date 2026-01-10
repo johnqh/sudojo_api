@@ -1,3 +1,0 @@
-# Config for unit tests - no database setup required
-[test]
-# No preload - unit tests don't need database setup

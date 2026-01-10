@@ -1,5 +1,7 @@
 [test]
-preload = ["./tests/setup.ts"]
+# Preload is specified per-script in package.json
+# - test:unit runs without preload (no database needed)
+# - test:integration uses --preload ./tests/setup.ts
 
 [test.env]
 file = ".env.test"
