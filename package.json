@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -33,9 +33,9 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.5",
-    "@sudobility/ratelimit_service": "^1.0.12",
+    "@sudobility/ratelimit_service": "^1.0.13",
     "@sudobility/sudojo_types": "^1.1.10",
-    "@sudobility/types": "^1.9.43",
+    "@sudobility/types": "^1.9.44",
     "drizzle-orm": "^0.45.0",
     "firebase-admin": "^13.6.0",
     "hono": "^4.10.7",
