@@ -1,4 +1,5 @@
 import type { Context, Next } from "hono";
+import { createAdminChecker } from "@sudobility/auth_lib";
 import { getEnv } from "../lib/env-helper";
 import { verifyIdToken } from "../services/firebase";
 import { errorResponse } from "@sudobility/sudojo_types";
@@ -6,19 +7,8 @@ import { errorResponse } from "@sudobility/sudojo_types";
 // Admin tokens cached for 100 hours (admins are trusted, reduce API calls)
 const ADMIN_TOKEN_CACHE_TTL_MS = 100 * 60 * 60 * 1000;
 
-// Admin emails (comma-separated list)
-const ADMIN_EMAILS = (getEnv("ADMIN_EMAILS") || "")
-  .split(",")
-  .map(email => email.trim().toLowerCase())
-  .filter(Boolean);
-
-/**
- * Check if an email is in the admin list.
- */
-export function isAdminEmail(email: string | undefined): boolean {
-  if (!email) return false;
-  return ADMIN_EMAILS.includes(email.toLowerCase());
-}
+// Admin email checker (parses ADMIN_EMAILS env var once)
+export const isAdminEmail = createAdminChecker(getEnv("ADMIN_EMAILS"));
 
 /**
  * Middleware that requires Firebase authentication and admin email.
@@ -42,9 +32,8 @@ export async function adminMiddleware(c: Context, next: Next) {
 
   try {
     const decodedToken = await verifyIdToken(token, ADMIN_TOKEN_CACHE_TTL_MS);
-    const userEmail = decodedToken.email?.toLowerCase();
 
-    if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
+    if (!isAdminEmail(decodedToken.email)) {
       return c.json(errorResponse("Admin access required"), 403);
     }
 

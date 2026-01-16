@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { firebaseAuthMiddleware } from "../middleware/firebaseAuth";
 import { userIdParamSchema } from "../schemas";
-import { getSubscriberEntitlements } from "../services/revenuecat";
+import { getSubscriptionHelper, getTestMode } from "../middleware/rateLimit";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const usersRouter = new Hono();
@@ -24,8 +24,20 @@ usersRouter.get(
       );
     }
 
+    const subHelper = getSubscriptionHelper();
+    if (!subHelper) {
+      return c.json(errorResponse("Subscription service not configured"), 500);
+    }
+
     try {
-      const subscriptionResult = await getSubscriberEntitlements(userId);
+      const testMode = getTestMode(c);
+      const subscriptionInfo = await subHelper.getSubscriptionInfo(userId, testMode);
+      // Transform to match the expected response format
+      const subscriptionResult = {
+        hasSubscription: subscriptionInfo.entitlements.length > 0,
+        entitlements: subscriptionInfo.entitlements,
+        subscriptionStartedAt: subscriptionInfo.subscriptionStartedAt,
+      };
       return c.json(successResponse(subscriptionResult));
     } catch (error) {
       console.error("Error fetching subscription:", error);

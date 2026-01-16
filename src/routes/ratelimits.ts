@@ -6,7 +6,7 @@ import {
   type RateLimitHistoryResponse,
 } from "@sudobility/types";
 import { firebaseAuthMiddleware } from "../middleware/firebaseAuth";
-import { rateLimitRouteHandler } from "../middleware/rateLimit";
+import { getRateLimitRouteHandler, getTestMode } from "../middleware/rateLimit";
 
 const ratelimitsRouter = new Hono();
 
@@ -14,12 +14,15 @@ const ratelimitsRouter = new Hono();
  * GET /ratelimits
  * Returns rate limit configurations for all entitlement tiers
  * and the current user's usage.
+ * Supports ?testMode=true query param for sandbox mode.
  */
 ratelimitsRouter.get("/", firebaseAuthMiddleware, async c => {
   try {
     const firebaseUser = c.get("firebaseUser");
-    const data = await rateLimitRouteHandler.getRateLimitsConfigData(
-      firebaseUser.uid
+    const testMode = getTestMode(c);
+    const data = await getRateLimitRouteHandler().getRateLimitsConfigData(
+      firebaseUser.uid,
+      testMode
     );
 
     return c.json(successResponse(data) as RateLimitsConfigResponse);
@@ -33,6 +36,7 @@ ratelimitsRouter.get("/", firebaseAuthMiddleware, async c => {
  * GET /ratelimits/history/:periodType
  * Returns usage history for a specific period type.
  * periodType can be: hour, day, or month
+ * Supports ?testMode=true query param for sandbox mode.
  */
 ratelimitsRouter.get(
   "/history/:periodType",
@@ -53,10 +57,13 @@ ratelimitsRouter.get(
 
       const periodType = periodTypeParam as RateLimitPeriodType;
       const firebaseUser = c.get("firebaseUser");
+      const testMode = getTestMode(c);
 
-      const data = await rateLimitRouteHandler.getRateLimitHistoryData(
+      const data = await getRateLimitRouteHandler().getRateLimitHistoryData(
         firebaseUser.uid,
-        periodType
+        periodType,
+        undefined, // use default limit
+        testMode
       );
 
       return c.json(successResponse(data) as RateLimitHistoryResponse);

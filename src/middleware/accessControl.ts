@@ -1,18 +1,12 @@
 import type { Context, Next } from "hono";
 import { verifyIdToken, extendTokenCacheTTL } from "../services/firebase";
-import { getSubscriberEntitlements } from "../services/revenuecat";
+import { getSubscriptionHelper, getTestMode } from "./rateLimit";
 import { checkAndRecordAccess } from "../services/access";
 import { errorResponse } from "@sudobility/sudojo_types";
-import { getEnv } from "../lib/env-helper";
+import { isAdminEmail } from "./auth";
 
 // Admin tokens cached for 100 hours (admins are trusted, reduce API calls)
 const ADMIN_TOKEN_CACHE_TTL_MS = 100 * 60 * 60 * 1000;
-
-// Admin emails bypass subscription checks (comma-separated list)
-const ADMIN_EMAILS = (getEnv("ADMIN_EMAILS") || "")
-  .split(",")
-  .map(email => email.trim().toLowerCase())
-  .filter(Boolean);
 
 export function createAccessControlMiddleware(endpoint: string) {
   return async (c: Context, next: Next) => {
@@ -34,30 +28,34 @@ export function createAccessControlMiddleware(endpoint: string) {
     try {
       const decodedToken = await verifyIdToken(token);
       const userId = decodedToken.uid;
-      const userEmail = decodedToken.email?.toLowerCase();
 
       // Store user info in context for later use
       c.set("firebaseUser", decodedToken);
 
       // Check if user is an admin (bypass subscription check)
-      if (userEmail && ADMIN_EMAILS.includes(userEmail)) {
+      if (isAdminEmail(decodedToken.email)) {
         // Extend cache TTL for admin tokens to 100 hours
         extendTokenCacheTTL(token, ADMIN_TOKEN_CACHE_TTL_MS);
         await next();
         return;
       }
 
-      // Check if user has subscription
-      try {
-        const subscription = await getSubscriberEntitlements(userId);
-        if (subscription.hasSubscription) {
-          // Subscriber has unlimited access
-          await next();
-          return;
+      // Check if user has subscription using SubscriptionHelper
+      const subHelper = getSubscriptionHelper();
+      if (subHelper) {
+        try {
+          const testMode = getTestMode(c);
+          const subscriptionInfo = await subHelper.getSubscriptionInfo(userId, testMode);
+          // Check if user has any active entitlements (non-empty array means they have a subscription)
+          if (subscriptionInfo.entitlements.length > 0) {
+            // Subscriber has unlimited access
+            await next();
+            return;
+          }
+        } catch (_subscriptionError) {
+          // If RevenueCat fails, continue with access check
+          console.error("RevenueCat check failed:", _subscriptionError);
         }
-      } catch (_subscriptionError) {
-        // If RevenueCat fails, continue with access check
-        console.error("RevenueCat check failed:", _subscriptionError);
       }
 
       // Non-subscriber: check daily access limit
