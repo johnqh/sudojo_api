@@ -9,7 +9,7 @@ import {
 import { SubscriptionHelper } from "@sudobility/subscription_service";
 import { db, rateLimitCounters } from "../db";
 import { getEnv, getRequiredEnv } from "../lib/env-helper";
-import { isAdminEmail } from "./auth";
+import { isSiteAdmin } from "../services/firebase";
 
 /**
  * Rate limit configuration for sudojo_api
@@ -111,7 +111,7 @@ function getRateLimitMiddleware(): ReturnType<typeof createRateLimitMiddleware> 
         // Skip rate limiting for admin users
         const firebaseUser = c.get("firebaseUser");
         if (!firebaseUser) return false;
-        return isAdminEmail(firebaseUser.email);
+        return isSiteAdmin(firebaseUser.email);
       },
       getTestMode: (c: any) => {
         const url = new URL(c.req.url);
@@ -150,7 +150,7 @@ export async function rateLimitHandler(c: Context, next: Next) {
 export async function authAndRateLimitMiddleware(c: Context, next: Next) {
   // Skip rate limiting for admin users
   const firebaseUser = (c as any).get("firebaseUser");
-  if (firebaseUser && isAdminEmail(firebaseUser.email)) {
+  if (firebaseUser && isSiteAdmin(firebaseUser.email)) {
     await next();
     return;
   }

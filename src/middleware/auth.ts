@@ -1,18 +1,14 @@
+/**
+ * @fileoverview Admin authentication middleware
+ */
+
 import type { Context, Next } from "hono";
-import { createAdminChecker } from "@sudobility/auth_lib";
-import { getEnv } from "../lib/env-helper";
-import { verifyIdToken } from "../services/firebase";
+import { verifyIdToken, isSiteAdmin } from "../services/firebase";
 import { errorResponse } from "@sudobility/sudojo_types";
-
-// Admin tokens cached for 100 hours (admins are trusted, reduce API calls)
-const ADMIN_TOKEN_CACHE_TTL_MS = 100 * 60 * 60 * 1000;
-
-// Admin email checker (parses ADMIN_EMAILS env var once)
-export const isAdminEmail = createAdminChecker(getEnv("ADMIN_EMAILS"));
 
 /**
  * Middleware that requires Firebase authentication and admin email.
- * Checks if user's email is in ADMIN_EMAILS environment variable.
+ * Checks if user's email is in SITEADMIN_EMAILS environment variable.
  */
 export async function adminMiddleware(c: Context, next: Next) {
   const authHeader = c.req.header("Authorization");
@@ -31,17 +27,20 @@ export async function adminMiddleware(c: Context, next: Next) {
   }
 
   try {
-    const decodedToken = await verifyIdToken(token, ADMIN_TOKEN_CACHE_TTL_MS);
+    const decodedToken = await verifyIdToken(token);
 
-    if (!isAdminEmail(decodedToken.email)) {
+    if (!isSiteAdmin(decodedToken.email)) {
       return c.json(errorResponse("Admin access required"), 403);
     }
 
     // Store user info in context for later use
     c.set("firebaseUser", decodedToken);
+    c.set("userId", decodedToken.uid);
+    c.set("userEmail", decodedToken.email ?? null);
+    c.set("siteAdmin", true);
 
     await next();
-  } catch (_error) {
+  } catch {
     return c.json(errorResponse("Invalid or expired Firebase token"), 401);
   }
 }

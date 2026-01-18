@@ -1,12 +1,8 @@
 import type { Context, Next } from "hono";
-import { verifyIdToken, extendTokenCacheTTL } from "../services/firebase";
+import { verifyIdToken, isSiteAdmin } from "../services/firebase";
 import { getSubscriptionHelper, getTestMode } from "./rateLimit";
 import { checkAndRecordAccess } from "../services/access";
 import { errorResponse } from "@sudobility/sudojo_types";
-import { isAdminEmail } from "./auth";
-
-// Admin tokens cached for 100 hours (admins are trusted, reduce API calls)
-const ADMIN_TOKEN_CACHE_TTL_MS = 100 * 60 * 60 * 1000;
 
 export function createAccessControlMiddleware(endpoint: string) {
   return async (c: Context, next: Next) => {
@@ -33,9 +29,7 @@ export function createAccessControlMiddleware(endpoint: string) {
       c.set("firebaseUser", decodedToken);
 
       // Check if user is an admin (bypass subscription check)
-      if (isAdminEmail(decodedToken.email)) {
-        // Extend cache TTL for admin tokens to 100 hours
-        extendTokenCacheTTL(token, ADMIN_TOKEN_CACHE_TTL_MS);
+      if (isSiteAdmin(decodedToken.email)) {
         await next();
         return;
       }
