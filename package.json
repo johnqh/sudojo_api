@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -34,7 +34,7 @@
   "dependencies": {
     "@hono/zod-validator": "^0.7.5",
     "@sudobility/auth_lib": "^0.0.14",
-    "@sudobility/auth_service": "^1.0.0",
+    "@sudobility/auth_service": "^1.1.1",
     "@sudobility/ratelimit_service": "^1.0.17",
     "@sudobility/subscription_service": "^1.0.1",
     "@sudobility/sudojo_types": "^1.2.3",
