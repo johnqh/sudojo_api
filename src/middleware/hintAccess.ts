@@ -47,7 +47,7 @@ export async function hintAccessMiddleware(c: Context, next: Next) {
   const authHeader = c.req.header("Authorization");
 
   // Default: anonymous user with free tier access
-  let hintAccess: HintAccessContext = {
+  const hintAccess: HintAccessContext = {
     maxHintLevel: HINT_LEVEL_LIMITS.free,
     userState: "anonymous",
     isAuthenticated: false,
