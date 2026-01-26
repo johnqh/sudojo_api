@@ -16,7 +16,7 @@ _.log
 report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # dotenv environment variable files
-# .env is committed with defaults, .env.local overrides locally
+.env
 .env.local
 .env.development.local
 .env.test.local

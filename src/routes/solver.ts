@@ -6,7 +6,13 @@ import {
   type SolveData,
   type ValidateData,
   type GenerateData,
+  type HintAccessDeniedResponse,
 } from "@sudobility/sudojo_types";
+import {
+  hintAccessMiddleware,
+  getRequiredEntitlement,
+  type HintAccessContext,
+} from "../middleware/hintAccess";
 
 const solverRouter = new Hono();
 
@@ -37,7 +43,7 @@ const DEFAULT_USER = "0".repeat(81); // 81 zeros - user hasn't entered anything
 const DEFAULT_PENCILMARKS = ",".repeat(80); // 81 empty elements (80 commas)
 const DEFAULT_AUTOPENCILMARKS = "false";
 
-// Helper to handle solve request
+// Helper to handle solve request with hint access control
 async function handleSolveRequest(c: Context) {
   try {
     // Get query params with defaults
@@ -66,6 +72,26 @@ async function handleSolveRequest(c: Context) {
       return c.json(errorResponse(errorMsg), 400);
     }
 
+    // Check hint access based on hint level
+    const hintAccess = c.get("hintAccess") as HintAccessContext | undefined;
+    const hintLevel = result.data.hints?.level ?? 0;
+
+    if (hintAccess && hintLevel > hintAccess.maxHintLevel) {
+      // User doesn't have access to this hint level
+      const response: HintAccessDeniedResponse = {
+        success: false,
+        error: {
+          code: "HINT_ACCESS_DENIED",
+          message: `This hint requires a higher subscription tier. Hint level: ${hintLevel}, your max level: ${hintAccess.maxHintLevel}`,
+          hintLevel,
+          requiredEntitlement: getRequiredEntitlement(hintLevel),
+          userState: hintAccess.userState,
+        },
+        timestamp: new Date().toISOString(),
+      };
+      return c.json(response, 402);
+    }
+
     return c.json(successResponse(result.data));
   } catch (error) {
     console.error("Solver proxy error:", error);
@@ -73,14 +99,18 @@ async function handleSolveRequest(c: Context) {
   }
 }
 
-// GET /solve - Get hints for solving a puzzle (public)
+// GET /solve - Get hints for solving a puzzle
+// Access controlled by subscription tier:
+//   - red_belt or site admin: all levels
+//   - blue_belt: levels 1-5
+//   - free/anonymous: levels 1-3
 // Query params:
 //   - original: 81 digits (required)
 //   - user: 81 digits, 0=empty (optional, defaults to 81 zeros)
 //   - autopencilmarks: true/false (optional, defaults to false)
 //   - pencilmarks: comma-separated 81 elements (optional, defaults to empty)
 //   - technique: technique number to filter (optional)
-solverRouter.get("/solve", handleSolveRequest);
+solverRouter.get("/solve", hintAccessMiddleware, handleSolveRequest);
 
 // GET /validate - Validate a puzzle has a unique solution (public)
 // Query params: original
