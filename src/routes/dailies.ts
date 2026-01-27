@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { eq, desc, sql } from "drizzle-orm";
-import { db, dailies } from "../db";
+import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
+import { db, dailies, levels, boards } from "../db";
 import {
   dailyCreateSchema,
   dailyUpdateSchema,
@@ -9,9 +9,84 @@ import {
   dateParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  scrambleBoard,
+} from "@sudobility/sudojo_types";
 
 const dailiesRouter = new Hono();
+
+/**
+ * Gets a random puzzle with level index 3-5, scrambles it, and returns as a fallback daily.
+ * Used when no daily puzzle exists for a requested date.
+ */
+async function getRandomFallbackPuzzle(date: string) {
+  // Get all levels with index 3, 4, or 5
+  const eligibleLevels = await db
+    .select()
+    .from(levels)
+    .where(and(gte(levels.index, 3), lte(levels.index, 5)));
+
+  if (eligibleLevels.length === 0) {
+    return null;
+  }
+
+  // Randomly pick one level
+  const randomLevel =
+    eligibleLevels[Math.floor(Math.random() * eligibleLevels.length)]!;
+
+  // Get a random puzzle with that level_uuid
+  const puzzleRows = await db
+    .select()
+    .from(boards)
+    .where(eq(boards.level_uuid, randomLevel.uuid))
+    .orderBy(sql`RANDOM()`)
+    .limit(1);
+
+  if (puzzleRows.length === 0) {
+    // Try without level filter if no puzzles found for that level
+    const anyPuzzleRows = await db
+      .select()
+      .from(boards)
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
+
+    if (anyPuzzleRows.length === 0) {
+      return null;
+    }
+
+    const puzzle = anyPuzzleRows[0]!;
+    const scrambled = scrambleBoard(puzzle.board, puzzle.solution);
+
+    return {
+      uuid: `fallback-${date}`,
+      date,
+      board_uuid: puzzle.uuid,
+      level_uuid: puzzle.level_uuid,
+      techniques: puzzle.techniques,
+      board: scrambled.puzzle,
+      solution: scrambled.solution,
+      created_at: null,
+      updated_at: null,
+    };
+  }
+
+  const puzzle = puzzleRows[0]!;
+  const scrambled = scrambleBoard(puzzle.board, puzzle.solution);
+
+  return {
+    uuid: `fallback-${date}`,
+    date,
+    board_uuid: puzzle.uuid,
+    level_uuid: randomLevel.uuid,
+    techniques: puzzle.techniques,
+    board: scrambled.puzzle,
+    solution: scrambled.solution,
+    created_at: null,
+    updated_at: null,
+  };
+}
 
 // GET all dailies (public)
 dailiesRouter.get("/", async c => {
@@ -19,34 +94,26 @@ dailiesRouter.get("/", async c => {
   return c.json(successResponse(rows));
 });
 
-// GET random daily (public)
-dailiesRouter.get("/random", async c => {
-  const rows = await db
-    .select()
-    .from(dailies)
-    .orderBy(sql`RANDOM()`)
-    .limit(1);
-
-  if (rows.length === 0) {
-    return c.json(errorResponse("No dailies found"), 404);
-  }
-
-  return c.json(successResponse(rows[0]));
-});
-
 // GET today's daily (public)
+// Falls back to a random scrambled puzzle with level index 3-5 if no daily exists
 dailiesRouter.get("/today", async c => {
   const today = new Date().toISOString().split("T")[0] as string;
   const rows = await db.select().from(dailies).where(eq(dailies.date, today));
 
   if (rows.length === 0) {
-    return c.json(errorResponse("No daily puzzle for today"), 404);
+    // Fallback: get a random puzzle with level index 3-5 and scramble it
+    const fallback = await getRandomFallbackPuzzle(today);
+    if (!fallback) {
+      return c.json(errorResponse("No puzzles available"), 404);
+    }
+    return c.json(successResponse(fallback));
   }
 
   return c.json(successResponse(rows[0]));
 });
 
 // GET daily by date (public)
+// Falls back to a random scrambled puzzle with level index 3-5 if no daily exists
 dailiesRouter.get(
   "/date/:date",
   zValidator("param", dateParamSchema),
@@ -55,7 +122,12 @@ dailiesRouter.get(
     const rows = await db.select().from(dailies).where(eq(dailies.date, date));
 
     if (rows.length === 0) {
-      return c.json(errorResponse("Daily not found for this date"), 404);
+      // Fallback: get a random puzzle with level index 3-5 and scramble it
+      const fallback = await getRandomFallbackPuzzle(date);
+      if (!fallback) {
+        return c.json(errorResponse("No puzzles available"), 404);
+      }
+      return c.json(successResponse(fallback));
     }
 
     return c.json(successResponse(rows[0]));
