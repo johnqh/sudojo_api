@@ -125,6 +125,34 @@ export const techniqueExamples = pgTable("technique_examples", {
 });
 
 // =============================================================================
+// Technique Practices Table (for practice mode)
+// =============================================================================
+
+export const techniquePractices = pgTable("technique_practices", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  /** Reference to the technique this practice is for */
+  technique_uuid: uuid("technique_uuid").references(() => techniques.uuid, {
+    onDelete: "cascade",
+  }),
+  /** Board state (merged user input into original - looks like fresh puzzle) */
+  board: varchar("board", { length: 81 }).notNull(),
+  /** Pencilmarks at this state (comma-delimited) */
+  pencilmarks: text("pencilmarks"),
+  /** Solution for reference */
+  solution: varchar("solution", { length: 81 }).notNull(),
+  /** Hint data (JSON with areas, cells, description) */
+  hint_data: text("hint_data"),
+  /** Source example UUID (optional, for reference) */
+  source_example_uuid: uuid("source_example_uuid").references(
+    () => techniqueExamples.uuid,
+    {
+      onDelete: "set null",
+    }
+  ),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// =============================================================================
 // Rate Limit Counters Table (from @sudobility/subscription_service)
 // =============================================================================
 

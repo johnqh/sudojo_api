@@ -137,3 +137,13 @@ export const techniqueExampleUpdateSchema = z.object({
   hint_data: z.string().nullish(),
   source_board_uuid: z.string().uuid().nullish(),
 });
+
+// Technique practice schemas
+export const techniquePracticeCreateSchema = z.object({
+  technique_uuid: z.string().uuid(),
+  board: z.string().length(81),
+  pencilmarks: z.string().nullish(),
+  solution: z.string().length(81),
+  hint_data: z.string().nullish(),
+  source_example_uuid: z.string().uuid().nullish(),
+});

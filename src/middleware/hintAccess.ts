@@ -116,10 +116,20 @@ export async function hintAccessMiddleware(c: Context, next: Next) {
           hintAccess.userState = "no_subscription";
         }
       } catch (error) {
-        // Invalid token - treat as anonymous
+        // Invalid/expired token - return 401 to trigger client token refresh
         console.error("Token verification failed:", error);
-        hintAccess.userState = "anonymous";
-        hintAccess.isAuthenticated = false;
+        if (error instanceof Error) {
+          console.error("Error message:", error.message);
+        }
+        // Return 401 so client can refresh token and retry
+        return c.json(
+          {
+            success: false,
+            error: "Invalid or expired token",
+            code: "AUTH_TOKEN_INVALID",
+          },
+          401
+        );
       }
     }
   }

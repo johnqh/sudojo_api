@@ -9,6 +9,7 @@ import usersRouter from "./users";
 import solverRouter from "./solver";
 import ratelimitsRouter from "./ratelimits";
 import examplesRouter from "./examples";
+import practicesRouter from "./practices";
 
 const routes = new Hono();
 
@@ -22,5 +23,6 @@ routes.route("/users", usersRouter);
 routes.route("/solver", solverRouter);
 routes.route("/ratelimits", ratelimitsRouter);
 routes.route("/examples", examplesRouter);
+routes.route("/practices", practicesRouter);
 
 export default routes;
