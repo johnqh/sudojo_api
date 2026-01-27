@@ -71,16 +71,17 @@ learningRouter.post(
   async c => {
     const body = c.req.valid("json");
 
-    const rows = await db
-      .insert(learning)
-      .values({
-        technique_uuid: body.technique_uuid,
-        index: body.index,
-        language_code: body.language_code,
-        text: body.text,
-        image_url: body.image_url ?? null,
-      })
-      .returning();
+    // Use type assertion to work around drizzle-orm type inference issue
+    // with foreign key references in insert values
+    const insertValues = {
+      technique_uuid: body.technique_uuid,
+      index: body.index,
+      language_code: body.language_code,
+      text: body.text,
+      image_url: body.image_url ?? null,
+    } as typeof learning.$inferInsert;
+
+    const rows = await db.insert(learning).values(insertValues).returning();
 
     return c.json(successResponse(rows[0]), 201);
   }
