@@ -51,7 +51,7 @@ async function handleSolveRequest(c: Context) {
     const user = c.req.query("user") ?? DEFAULT_USER;
     const autopencilmarks = c.req.query("autopencilmarks") ?? DEFAULT_AUTOPENCILMARKS;
     const pencilmarks = c.req.query("pencilmarks") ?? DEFAULT_PENCILMARKS;
-    const technique = c.req.query("technique");
+    const techniques = c.req.query("techniques");
 
     // Build query string with defaults applied
     const params = new URLSearchParams();
@@ -59,8 +59,8 @@ async function handleSolveRequest(c: Context) {
     params.set("user", user);
     params.set("autopencilmarks", autopencilmarks);
     params.set("pencilmarks", pencilmarks);
-    if (technique) {
-      params.set("technique", technique);
+    if (techniques) {
+      params.set("techniques", techniques);
     }
 
     const result = await proxySolverRequest<SolveData>("solve", params.toString());
@@ -109,7 +109,7 @@ async function handleSolveRequest(c: Context) {
 //   - user: 81 digits, 0=empty (optional, defaults to 81 zeros)
 //   - autopencilmarks: true/false (optional, defaults to false)
 //   - pencilmarks: comma-separated 81 elements (optional, defaults to empty)
-//   - technique: technique number to filter (optional)
+//   - techniques: comma-delimited list of technique numbers to filter (optional, e.g., "1,2,3")
 solverRouter.get("/solve", hintAccessMiddleware, handleSolveRequest);
 
 // GET /validate - Validate a puzzle has a unique solution (public)
