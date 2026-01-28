@@ -16,7 +16,7 @@ practicesRouter.get("/counts", async c => {
       technique_uuid: techniques.uuid,
       technique_title: techniques.title,
       count: sql<number>`COALESCE(
-        (SELECT COUNT(*) FROM technique_practices WHERE technique_uuid = ${techniques.uuid}),
+        (SELECT COUNT(*) FROM technique_practices WHERE technique_practices.technique_uuid = techniques.uuid),
         0
       )::int`,
     })
