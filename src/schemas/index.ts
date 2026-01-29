@@ -118,12 +118,13 @@ export const userIdParamSchema = z.object({
 });
 
 // Technique example schemas
+// Note: primary_technique max value must match the highest TechniqueId in sudojo_types
 export const techniqueExampleCreateSchema = z.object({
   board: z.string().length(81),
   pencilmarks: z.string().nullish(),
   solution: z.string().length(81),
   techniques_bitfield: z.number().int().min(1),
-  primary_technique: z.number().int().min(1).max(23),
+  primary_technique: z.number().int().min(1).max(37),
   hint_data: z.string().nullish(),
   source_board_uuid: z.string().uuid().nullish(),
 });
@@ -133,7 +134,7 @@ export const techniqueExampleUpdateSchema = z.object({
   pencilmarks: z.string().nullish(),
   solution: z.string().length(81).optional(),
   techniques_bitfield: z.number().int().min(1).optional(),
-  primary_technique: z.number().int().min(1).max(23).optional(),
+  primary_technique: z.number().int().min(1).max(37).optional(),
   hint_data: z.string().nullish(),
   source_board_uuid: z.string().uuid().nullish(),
 });
