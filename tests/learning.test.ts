@@ -14,17 +14,9 @@ import {
   API_TOKEN,
   getAuthHeaders,
 } from "./setup";
-import type {
-  ApiResponse,
-  LevelData,
-  TechniqueData,
-  LearningData,
-} from "./types";
+import type { ApiResponse, LearningData } from "./types";
 
 describe("Learning API", () => {
-  let levelUuid: string;
-  let techniqueUuid: string;
-
   beforeAll(async () => {
     await setupTestDatabase();
   });
@@ -35,32 +27,29 @@ describe("Learning API", () => {
 
   beforeEach(async () => {
     await cleanupTestDatabase();
-    const levelRes = await app.request("/api/v1/levels", {
+    // Create a level first
+    await app.request("/api/v1/levels", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${API_TOKEN}`,
       },
-      body: JSON.stringify({ index: 1, title: "Easy" }),
+      body: JSON.stringify({ level: 1, title: "Easy" }),
     });
-    const levelBody = (await levelRes.json()) as ApiResponse<LevelData>;
-    levelUuid = levelBody.data!.uuid;
 
-    const techniqueRes = await app.request("/api/v1/techniques", {
+    // Create a technique
+    await app.request("/api/v1/techniques", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${API_TOKEN}`,
       },
       body: JSON.stringify({
-        level_uuid: levelUuid,
-        index: 1,
+        technique: 1,
+        level: 1,
         title: "Naked Singles",
       }),
     });
-    const techniqueBody =
-      (await techniqueRes.json()) as ApiResponse<TechniqueData>;
-    techniqueUuid = techniqueBody.data!.uuid;
   });
 
   describe("GET /api/v1/learning", () => {
@@ -73,7 +62,7 @@ describe("Learning API", () => {
       expect(body.data).toEqual([]);
     });
 
-    it("should filter by technique_uuid", async () => {
+    it("should filter by technique", async () => {
       await app.request("/api/v1/learning", {
         method: "POST",
         headers: {
@@ -81,17 +70,16 @@ describe("Learning API", () => {
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          technique_uuid: techniqueUuid,
+          technique: 1,
           index: 1,
           language_code: "en",
           text: "Step 1",
         }),
       });
 
-      const res = await app.request(
-        `/api/v1/learning?technique_uuid=${techniqueUuid}`,
-        { headers: getAuthHeaders() }
-      );
+      const res = await app.request("/api/v1/learning?technique=1", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
       const body = (await res.json()) as ApiResponse<LearningData[]>;
       expect(body.data!.length).toBe(1);
@@ -105,7 +93,7 @@ describe("Learning API", () => {
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          technique_uuid: techniqueUuid,
+          technique: 1,
           index: 1,
           language_code: "es",
           text: "Paso 1",
@@ -131,7 +119,7 @@ describe("Learning API", () => {
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          technique_uuid: techniqueUuid,
+          technique: 1,
           index: 1,
           language_code: "en",
           text: "Look for cells with only one candidate",
@@ -149,7 +137,7 @@ describe("Learning API", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          technique_uuid: techniqueUuid,
+          technique: 1,
           index: 1,
           text: "Test",
         }),
@@ -175,7 +163,7 @@ describe("Learning API", () => {
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          technique_uuid: techniqueUuid,
+          technique: 1,
           index: 1,
           language_code: "fr",
           text: "Etape 1",
@@ -201,7 +189,7 @@ describe("Learning API", () => {
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          technique_uuid: techniqueUuid,
+          technique: 1,
           index: 1,
           text: "Original text",
         }),
@@ -231,7 +219,7 @@ describe("Learning API", () => {
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          technique_uuid: techniqueUuid,
+          technique: 1,
           index: 1,
           text: "ToDelete",
         }),

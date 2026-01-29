@@ -11,8 +11,7 @@ import {
 import { createRateLimitCountersTablePublic } from "@sudobility/ratelimit_service";
 
 export const levels = pgTable("levels", {
-  uuid: uuid("uuid").primaryKey().defaultRandom(),
-  index: integer("index").notNull(),
+  level: integer("level").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   text: text("text"),
   requires_subscription: boolean("requires_subscription").default(false),
@@ -21,11 +20,10 @@ export const levels = pgTable("levels", {
 });
 
 export const techniques = pgTable("techniques", {
-  uuid: uuid("uuid").primaryKey().defaultRandom(),
-  level_uuid: uuid("level_uuid").references(() => levels.uuid, {
+  technique: integer("technique").primaryKey(),
+  level: integer("level").references(() => levels.level, {
     onDelete: "cascade",
   }),
-  index: integer("index").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   text: text("text"),
   created_at: timestamp("created_at").defaultNow(),
@@ -34,7 +32,7 @@ export const techniques = pgTable("techniques", {
 
 export const learning = pgTable("learning", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
-  technique_uuid: uuid("technique_uuid").references(() => techniques.uuid, {
+  technique: integer("technique").references(() => techniques.technique, {
     onDelete: "cascade",
   }),
   index: integer("index").notNull(),
@@ -49,7 +47,7 @@ export const learning = pgTable("learning", {
 
 export const boards = pgTable("boards", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
-  level_uuid: uuid("level_uuid").references(() => levels.uuid, {
+  level: integer("level").references(() => levels.level, {
     onDelete: "set null",
   }),
   symmetrical: boolean("symmetrical").default(false),
@@ -66,7 +64,7 @@ export const dailies = pgTable("dailies", {
   board_uuid: uuid("board_uuid").references(() => boards.uuid, {
     onDelete: "set null",
   }),
-  level_uuid: uuid("level_uuid").references(() => levels.uuid, {
+  level: integer("level").references(() => levels.level, {
     onDelete: "set null",
   }),
   techniques: integer("techniques").default(0),
@@ -81,7 +79,7 @@ export const challenges = pgTable("challenges", {
   board_uuid: uuid("board_uuid").references(() => boards.uuid, {
     onDelete: "set null",
   }),
-  level_uuid: uuid("level_uuid").references(() => levels.uuid, {
+  level: integer("level").references(() => levels.level, {
     onDelete: "set null",
   }),
   difficulty: integer("difficulty").default(1),
@@ -131,7 +129,7 @@ export const techniqueExamples = pgTable("technique_examples", {
 export const techniquePractices = pgTable("technique_practices", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   /** Reference to the technique this practice is for */
-  technique_uuid: uuid("technique_uuid").references(() => techniques.uuid, {
+  technique: integer("technique").references(() => techniques.technique, {
     onDelete: "cascade",
   }),
   /** Board state (merged user input into original - looks like fresh puzzle) */

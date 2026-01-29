@@ -2,7 +2,11 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { eq, sql } from "drizzle-orm";
 import { db, techniquePractices, techniques } from "../db";
-import { techniquePracticeCreateSchema, uuidParamSchema } from "../schemas";
+import {
+  techniquePracticeCreateSchema,
+  uuidParamSchema,
+  techniqueParamSchema,
+} from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
@@ -13,30 +17,30 @@ const practicesRouter = new Hono();
 practicesRouter.get("/counts", async c => {
   const rows = await db
     .select({
-      technique_uuid: techniques.uuid,
+      technique: techniques.technique,
       technique_title: techniques.title,
       count: sql<number>`COALESCE(
-        (SELECT COUNT(*) FROM technique_practices WHERE technique_practices.technique_uuid = techniques.uuid),
+        (SELECT COUNT(*) FROM technique_practices WHERE technique_practices.technique = techniques.technique),
         0
       )::int`,
     })
     .from(techniques)
-    .orderBy(techniques.index);
+    .orderBy(techniques.technique);
 
   return c.json(successResponse(rows));
 });
 
 // GET random practice for a technique (public)
 practicesRouter.get(
-  "/technique/:uuid/random",
-  zValidator("param", uuidParamSchema),
+  "/technique/:technique/random",
+  zValidator("param", techniqueParamSchema),
   async c => {
-    const { uuid: techniqueUuid } = c.req.valid("param");
+    const { technique } = c.req.valid("param");
 
     const rows = await db
       .select()
       .from(techniquePractices)
-      .where(eq(techniquePractices.technique_uuid, techniqueUuid))
+      .where(eq(techniquePractices.technique, technique))
       .orderBy(sql`RANDOM()`)
       .limit(1);
 
@@ -74,7 +78,7 @@ practicesRouter.post(
     const rows = await db
       .insert(techniquePractices)
       .values({
-        technique_uuid: body.technique_uuid,
+        technique: body.technique,
         board: body.board,
         pencilmarks: body.pencilmarks ?? null,
         solution: body.solution,

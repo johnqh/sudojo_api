@@ -43,6 +43,14 @@ mock.module("../src/services/firebase", () => ({
   isAnonymousUser: (decodedToken: { firebase?: { sign_in_provider?: string } }) => {
     return decodedToken.firebase?.sign_in_provider === "anonymous";
   },
+  isSiteAdmin: (email: string | undefined) => {
+    // In tests, consider test@example.com as admin
+    return email === "test@example.com";
+  },
+  getUserInfo: (decodedToken: { uid: string; email?: string }) => ({
+    uid: decodedToken.uid,
+    email: decodedToken.email,
+  }),
   extendTokenCacheTTL: (_token: string, _ttlMs: number) => {
     // No-op in tests
   },

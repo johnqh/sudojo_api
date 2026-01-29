@@ -15,8 +15,7 @@ if (!insertMatch) {
 const valuesStr = insertMatch[1];
 
 const records: Array<{
-  uuid: string;
-  index: number;
+  level: number;
   title: string;
   text: string | null;
   requires_subscription: boolean;
@@ -27,13 +26,12 @@ const regex = /\((\d+),'([^']+)',(\d+),'([^']+)',(?:'([^']*)'|NULL),(\d+),(\d+),
 let match;
 
 while ((match = regex.exec(valuesStr)) !== null) {
-  const [, , uuid, index, title, text, requires_subscription, status] = match;
+  const [, , , index, title, text, requires_subscription, status] = match;
 
   // Only import active records (status = 1)
   if (status === "1") {
     records.push({
-      uuid,
-      index: parseInt(index),
+      level: parseInt(index),
       title,
       text: text || null,
       requires_subscription: requires_subscription === "1",
@@ -50,9 +48,8 @@ if (records.length === 0) {
 
 // Insert with upsert
 await db.insert(levels).values(records).onConflictDoUpdate({
-  target: levels.uuid,
+  target: levels.level,
   set: {
-    index: sql`EXCLUDED.index`,
     title: sql`EXCLUDED.title`,
     text: sql`EXCLUDED.text`,
     requires_subscription: sql`EXCLUDED.requires_subscription`,

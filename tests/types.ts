@@ -5,45 +5,43 @@ export interface ApiResponse<T = unknown> {
 }
 
 export interface LevelData {
-  uuid: string;
-  index: number;
+  level: number;
   title: string;
-  text: string;
-  requires_subscription: boolean;
+  text: string | null;
+  requires_subscription: boolean | null;
 }
 
 export interface TechniqueData {
-  uuid: string;
-  level_uuid: string;
-  index: number;
+  technique: number;
+  level: number | null;
   title: string;
-  text: string;
+  text: string | null;
 }
 
 export interface LearningData {
   uuid: string;
-  technique_uuid: string;
+  technique: number | null;
   index: number;
   language_code: string;
-  text: string;
+  text: string | null;
   image_url: string | null;
 }
 
 export interface BoardData {
   uuid: string;
-  level_uuid: string | null;
-  symmetrical: boolean;
+  level: number | null;
+  symmetrical: boolean | null;
   board: string;
   solution: string;
-  techniques: number;
+  techniques: number | null;
 }
 
 export interface DailyData {
   uuid: string;
   date: string;
   board_uuid: string | null;
-  level_uuid: string | null;
-  techniques: number;
+  level: number | null;
+  techniques: number | null;
   board: string;
   solution: string;
 }
@@ -51,8 +49,8 @@ export interface DailyData {
 export interface ChallengeData {
   uuid: string;
   board_uuid: string | null;
-  level_uuid: string | null;
-  difficulty: number;
+  level: number | null;
+  difficulty: number | null;
   board: string;
   solution: string;
 }

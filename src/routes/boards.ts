@@ -14,7 +14,7 @@ const boardsRouter = new Hono();
 
 // GET all boards (public)
 boardsRouter.get("/", async c => {
-  const levelUuid = c.req.query("level_uuid");
+  const levelParam = c.req.query("level");
   const techniqueBit = c.req.query("technique_bit");
   const techniques = c.req.query("techniques");
   const limit = c.req.query("limit");
@@ -22,9 +22,12 @@ boardsRouter.get("/", async c => {
 
   let query = db.select().from(boards).$dynamic();
 
-  // Filter by level_uuid if provided
-  if (levelUuid) {
-    query = query.where(eq(boards.level_uuid, levelUuid));
+  // Filter by level if provided
+  if (levelParam) {
+    const level = parseInt(levelParam, 10);
+    if (!isNaN(level)) {
+      query = query.where(eq(boards.level, level));
+    }
   }
 
   // Filter by technique bit if provided (boards that have this technique)
@@ -86,16 +89,25 @@ boardsRouter.get("/counts", async c => {
 
 // GET random board (public)
 boardsRouter.get("/random", async c => {
-  const levelUuid = c.req.query("level_uuid");
+  const levelParam = c.req.query("level");
 
   let rows;
-  if (levelUuid) {
-    rows = await db
-      .select()
-      .from(boards)
-      .where(eq(boards.level_uuid, levelUuid))
-      .orderBy(sql`RANDOM()`)
-      .limit(1);
+  if (levelParam) {
+    const level = parseInt(levelParam, 10);
+    if (!isNaN(level)) {
+      rows = await db
+        .select()
+        .from(boards)
+        .where(eq(boards.level, level))
+        .orderBy(sql`RANDOM()`)
+        .limit(1);
+    } else {
+      rows = await db
+        .select()
+        .from(boards)
+        .orderBy(sql`RANDOM()`)
+        .limit(1);
+    }
   } else {
     rows = await db
       .select()
@@ -134,7 +146,7 @@ boardsRouter.post(
     const rows = await db
       .insert(boards)
       .values({
-        level_uuid: body.level_uuid ?? null,
+        level: body.level ?? null,
         symmetrical: body.symmetrical,
         board: body.board,
         solution: body.solution,
@@ -168,8 +180,8 @@ boardsRouter.put(
     const rows = await db
       .update(boards)
       .set({
-        level_uuid:
-          body.level_uuid !== undefined ? body.level_uuid : current.level_uuid,
+        level:
+          body.level !== undefined ? body.level : current.level,
         symmetrical: body.symmetrical ?? current.symmetrical,
         board: body.board ?? current.board,
         solution: body.solution ?? current.solution,

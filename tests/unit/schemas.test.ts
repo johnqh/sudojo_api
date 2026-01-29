@@ -14,7 +14,7 @@ describe("Schema Validation", () => {
   describe("levelCreateSchema", () => {
     it("should accept valid level data", () => {
       const result = levelCreateSchema.safeParse({
-        index: 1,
+        level: 1,
         title: "Easy",
         text: "Easy puzzles",
         requires_subscription: false,
@@ -24,7 +24,7 @@ describe("Schema Validation", () => {
 
     it("should accept minimal required fields", () => {
       const result = levelCreateSchema.safeParse({
-        index: 1,
+        level: 1,
         title: "Easy",
       });
       expect(result.success).toBe(true);
@@ -36,21 +36,21 @@ describe("Schema Validation", () => {
 
     it("should reject empty title", () => {
       const result = levelCreateSchema.safeParse({
-        index: 1,
+        level: 1,
         title: "",
       });
       expect(result.success).toBe(false);
     });
 
-    it("should reject non-integer index", () => {
+    it("should reject non-integer level", () => {
       const result = levelCreateSchema.safeParse({
-        index: 1.5,
+        level: 1.5,
         title: "Easy",
       });
       expect(result.success).toBe(false);
     });
 
-    it("should reject missing index", () => {
+    it("should reject missing level", () => {
       const result = levelCreateSchema.safeParse({
         title: "Easy",
       });
@@ -75,18 +75,27 @@ describe("Schema Validation", () => {
   describe("techniqueCreateSchema", () => {
     it("should accept valid technique data", () => {
       const result = techniqueCreateSchema.safeParse({
-        level_uuid: "123e4567-e89b-12d3-a456-426614174000",
-        index: 1,
+        technique: 1,
+        level: 1,
         title: "Naked Single",
         text: "Description",
       });
       expect(result.success).toBe(true);
     });
 
-    it("should reject invalid UUID", () => {
+    it("should reject invalid level", () => {
       const result = techniqueCreateSchema.safeParse({
-        level_uuid: "not-a-uuid",
-        index: 1,
+        technique: 1,
+        level: 0,
+        title: "Naked Single",
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject invalid technique", () => {
+      const result = techniqueCreateSchema.safeParse({
+        technique: 38,
+        level: 1,
         title: "Naked Single",
       });
       expect(result.success).toBe(false);
@@ -121,9 +130,9 @@ describe("Schema Validation", () => {
       expect(result.success).toBe(false);
     });
 
-    it("should accept optional level_uuid", () => {
+    it("should accept optional level", () => {
       const result = boardCreateSchema.safeParse({
-        level_uuid: "123e4567-e89b-12d3-a456-426614174000",
+        level: 1,
         board: validBoard,
         solution: validSolution,
       });

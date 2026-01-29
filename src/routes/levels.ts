@@ -5,7 +5,7 @@ import { db, levels } from "../db";
 import {
   levelCreateSchema,
   levelUpdateSchema,
-  uuidParamSchema,
+  levelParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
@@ -14,14 +14,14 @@ const levelsRouter = new Hono();
 
 // GET all levels (public)
 levelsRouter.get("/", async c => {
-  const rows = await db.select().from(levels).orderBy(asc(levels.index));
+  const rows = await db.select().from(levels).orderBy(asc(levels.level));
   return c.json(successResponse(rows));
 });
 
-// GET one level by uuid (public)
-levelsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
-  const { uuid } = c.req.valid("param");
-  const rows = await db.select().from(levels).where(eq(levels.uuid, uuid));
+// GET one level by level number (public)
+levelsRouter.get("/:level", zValidator("param", levelParamSchema), async c => {
+  const { level } = c.req.valid("param");
+  const rows = await db.select().from(levels).where(eq(levels.level, level));
 
   if (rows.length === 0) {
     return c.json(errorResponse("Level not found"), 404);
@@ -41,7 +41,7 @@ levelsRouter.post(
     const rows = await db
       .insert(levels)
       .values({
-        index: body.index,
+        level: body.level,
         title: body.title,
         text: body.text,
         requires_subscription: body.requires_subscription,
@@ -54,19 +54,19 @@ levelsRouter.post(
 
 // PUT update level (requires admin auth)
 levelsRouter.put(
-  "/:uuid",
+  "/:level",
   adminMiddleware,
-  zValidator("param", uuidParamSchema),
+  zValidator("param", levelParamSchema),
   zValidator("json", levelUpdateSchema),
   async c => {
-    const { uuid } = c.req.valid("param");
+    const { level } = c.req.valid("param");
     const body = c.req.valid("json");
 
     // Check if level exists
     const existing = await db
       .select()
       .from(levels)
-      .where(eq(levels.uuid, uuid));
+      .where(eq(levels.level, level));
     if (existing.length === 0) {
       return c.json(errorResponse("Level not found"), 404);
     }
@@ -75,14 +75,13 @@ levelsRouter.put(
     const rows = await db
       .update(levels)
       .set({
-        index: body.index ?? current.index,
         title: body.title ?? current.title,
         text: body.text ?? current.text,
         requires_subscription:
           body.requires_subscription ?? current.requires_subscription,
         updated_at: new Date(),
       })
-      .where(eq(levels.uuid, uuid))
+      .where(eq(levels.level, level))
       .returning();
 
     return c.json(successResponse(rows[0]));
@@ -91,15 +90,15 @@ levelsRouter.put(
 
 // DELETE level (requires admin auth)
 levelsRouter.delete(
-  "/:uuid",
+  "/:level",
   adminMiddleware,
-  zValidator("param", uuidParamSchema),
+  zValidator("param", levelParamSchema),
   async c => {
-    const { uuid } = c.req.valid("param");
+    const { level } = c.req.valid("param");
 
     const rows = await db
       .delete(levels)
-      .where(eq(levels.uuid, uuid))
+      .where(eq(levels.level, level))
       .returning();
 
     if (rows.length === 0) {

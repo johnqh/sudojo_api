@@ -14,11 +14,9 @@ import {
   API_TOKEN,
   getAuthHeaders,
 } from "./setup";
-import type { ApiResponse, LevelData, TechniqueData } from "./types";
+import type { ApiResponse, TechniqueData } from "./types";
 
 describe("Techniques API", () => {
-  let levelUuid: string;
-
   beforeAll(async () => {
     await setupTestDatabase();
   });
@@ -29,16 +27,15 @@ describe("Techniques API", () => {
 
   beforeEach(async () => {
     await cleanupTestDatabase();
-    const levelRes = await app.request("/api/v1/levels", {
+    // Create a level first (techniques require a level)
+    await app.request("/api/v1/levels", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${API_TOKEN}`,
       },
-      body: JSON.stringify({ index: 1, title: "Easy" }),
+      body: JSON.stringify({ level: 1, title: "Easy" }),
     });
-    const levelBody = (await levelRes.json()) as ApiResponse<LevelData>;
-    levelUuid = levelBody.data!.uuid;
   });
 
   describe("GET /api/v1/techniques", () => {
@@ -51,7 +48,7 @@ describe("Techniques API", () => {
       expect(body.data).toEqual([]);
     });
 
-    it("should filter by level_uuid", async () => {
+    it("should filter by level", async () => {
       await app.request("/api/v1/techniques", {
         method: "POST",
         headers: {
@@ -59,16 +56,15 @@ describe("Techniques API", () => {
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          level_uuid: levelUuid,
-          index: 1,
+          technique: 1,
+          level: 1,
           title: "Naked Singles",
         }),
       });
 
-      const res = await app.request(
-        `/api/v1/techniques?level_uuid=${levelUuid}`,
-        { headers: getAuthHeaders() }
-      );
+      const res = await app.request("/api/v1/techniques?level=1", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
       const body = (await res.json()) as ApiResponse<TechniqueData[]>;
       expect(body.data!.length).toBe(1);
@@ -84,8 +80,8 @@ describe("Techniques API", () => {
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          level_uuid: levelUuid,
-          index: 1,
+          technique: 1,
+          level: 1,
           title: "Naked Singles",
           text: "Find cells with only one possible value",
         }),
@@ -93,6 +89,7 @@ describe("Techniques API", () => {
       expect(res.status).toBe(201);
       const body = (await res.json()) as ApiResponse<TechniqueData>;
       expect(body.data!.title).toBe("Naked Singles");
+      expect(body.data!.technique).toBe(1);
     });
 
     it("should reject request without auth", async () => {
@@ -100,8 +97,8 @@ describe("Techniques API", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          level_uuid: levelUuid,
-          index: 1,
+          technique: 1,
+          level: 1,
           title: "Test",
         }),
       });
@@ -109,102 +106,97 @@ describe("Techniques API", () => {
     });
   });
 
-  describe("GET /api/v1/techniques/:uuid", () => {
+  describe("GET /api/v1/techniques/:technique", () => {
     it("should return 404 for non-existent technique", async () => {
-      const res = await app.request(
-        "/api/v1/techniques/00000000-0000-0000-0000-000000000000",
-        { headers: getAuthHeaders() }
-      );
+      const res = await app.request("/api/v1/techniques/37", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(404);
     });
 
-    it("should return technique by uuid", async () => {
-      const createRes = await app.request("/api/v1/techniques", {
+    it("should return 400 for invalid technique format", async () => {
+      const res = await app.request("/api/v1/techniques/invalid", {
+        headers: getAuthHeaders(),
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("should return technique by technique number", async () => {
+      await app.request("/api/v1/techniques", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          level_uuid: levelUuid,
-          index: 1,
+          technique: 2,
+          level: 1,
           title: "Hidden Singles",
         }),
       });
-      const created = (await createRes.json()) as ApiResponse<TechniqueData>;
 
-      const res = await app.request(
-        `/api/v1/techniques/${created.data!.uuid}`,
-        { headers: getAuthHeaders() }
-      );
+      const res = await app.request("/api/v1/techniques/2", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(200);
       const body = (await res.json()) as ApiResponse<TechniqueData>;
       expect(body.data!.title).toBe("Hidden Singles");
     });
   });
 
-  describe("PUT /api/v1/techniques/:uuid", () => {
+  describe("PUT /api/v1/techniques/:technique", () => {
     it("should update a technique", async () => {
-      const createRes = await app.request("/api/v1/techniques", {
+      await app.request("/api/v1/techniques", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          level_uuid: levelUuid,
-          index: 1,
+          technique: 1,
+          level: 1,
           title: "Original",
         }),
       });
-      const created = (await createRes.json()) as ApiResponse<TechniqueData>;
 
-      const res = await app.request(
-        `/api/v1/techniques/${created.data!.uuid}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${API_TOKEN}`,
-          },
-          body: JSON.stringify({ title: "Updated" }),
-        }
-      );
+      const res = await app.request("/api/v1/techniques/1", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${API_TOKEN}`,
+        },
+        body: JSON.stringify({ title: "Updated" }),
+      });
       expect(res.status).toBe(200);
       const body = (await res.json()) as ApiResponse<TechniqueData>;
       expect(body.data!.title).toBe("Updated");
     });
   });
 
-  describe("DELETE /api/v1/techniques/:uuid", () => {
+  describe("DELETE /api/v1/techniques/:technique", () => {
     it("should delete a technique", async () => {
-      const createRes = await app.request("/api/v1/techniques", {
+      await app.request("/api/v1/techniques", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          level_uuid: levelUuid,
-          index: 1,
+          technique: 1,
+          level: 1,
           title: "ToDelete",
         }),
       });
-      const created = (await createRes.json()) as ApiResponse<TechniqueData>;
 
-      const res = await app.request(
-        `/api/v1/techniques/${created.data!.uuid}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${API_TOKEN}` },
-        }
-      );
+      const res = await app.request("/api/v1/techniques/1", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${API_TOKEN}` },
+      });
       expect(res.status).toBe(200);
 
-      const getRes = await app.request(
-        `/api/v1/techniques/${created.data!.uuid}`,
-        { headers: getAuthHeaders() }
-      );
+      const getRes = await app.request("/api/v1/techniques/1", {
+        headers: getAuthHeaders(),
+      });
       expect(getRes.status).toBe(404);
     });
   });

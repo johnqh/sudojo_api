@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { eq, desc, sql } from "drizzle-orm";
-import { db, techniqueExamples, techniques } from "../db";
+import { db, techniqueExamples } from "../db";
 import {
   techniqueExampleCreateSchema,
   techniqueExampleUpdateSchema,
@@ -22,7 +22,7 @@ examplesRouter.get("/", async c => {
   let rows;
   if (technique) {
     const techniqueId = parseInt(technique, 10);
-    if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 23) {
+    if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 37) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
     rows = await db
@@ -32,7 +32,7 @@ examplesRouter.get("/", async c => {
       .orderBy(desc(techniqueExamples.created_at));
   } else if (hasTechnique) {
     const techniqueId = parseInt(hasTechnique, 10);
-    if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 23) {
+    if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 37) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
     const bit = 1 << (techniqueId - 1);
@@ -73,27 +73,15 @@ examplesRouter.get("/counts", async c => {
 });
 
 // GET random example for a technique (public)
-// Query params: ?technique=N (filter by primary_technique index)
-//               ?technique_uuid=UUID (filter by technique UUID)
+// Query params: ?technique=N (filter by primary_technique)
 examplesRouter.get("/random", async c => {
   const technique = c.req.query("technique");
-  const techniqueUuid = c.req.query("technique_uuid");
 
   let techniqueId: number | null = null;
 
-  if (techniqueUuid) {
-    const techniqueRows = await db
-      .select({ index: techniques.index })
-      .from(techniques)
-      .where(eq(techniques.uuid, techniqueUuid));
-
-    if (techniqueRows.length === 0) {
-      return c.json(errorResponse("Technique not found"), 404);
-    }
-    techniqueId = techniqueRows[0]!.index;
-  } else if (technique) {
+  if (technique) {
     techniqueId = parseInt(technique, 10);
-    if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 23) {
+    if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 37) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
   }

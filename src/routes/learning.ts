@@ -14,38 +14,54 @@ const learningRouter = new Hono();
 
 // GET all learning entries (public)
 learningRouter.get("/", async c => {
-  const techniqueUuid = c.req.query("technique_uuid");
+  const techniqueParam = c.req.query("technique");
   const languageCode = c.req.query("language_code");
 
   let rows;
-  if (techniqueUuid && languageCode) {
-    rows = await db
-      .select()
-      .from(learning)
-      .where(
-        and(
-          eq(learning.technique_uuid, techniqueUuid),
-          eq(learning.language_code, languageCode)
+  if (techniqueParam && languageCode) {
+    const technique = parseInt(techniqueParam, 10);
+    if (!isNaN(technique)) {
+      rows = await db
+        .select()
+        .from(learning)
+        .where(
+          and(
+            eq(learning.technique, technique),
+            eq(learning.language_code, languageCode)
+          )
         )
-      )
-      .orderBy(asc(learning.index));
-  } else if (techniqueUuid) {
-    rows = await db
-      .select()
-      .from(learning)
-      .where(eq(learning.technique_uuid, techniqueUuid))
-      .orderBy(asc(learning.index));
+        .orderBy(asc(learning.index));
+    } else {
+      rows = await db
+        .select()
+        .from(learning)
+        .orderBy(asc(learning.technique), asc(learning.index));
+    }
+  } else if (techniqueParam) {
+    const technique = parseInt(techniqueParam, 10);
+    if (!isNaN(technique)) {
+      rows = await db
+        .select()
+        .from(learning)
+        .where(eq(learning.technique, technique))
+        .orderBy(asc(learning.index));
+    } else {
+      rows = await db
+        .select()
+        .from(learning)
+        .orderBy(asc(learning.technique), asc(learning.index));
+    }
   } else if (languageCode) {
     rows = await db
       .select()
       .from(learning)
       .where(eq(learning.language_code, languageCode))
-      .orderBy(asc(learning.technique_uuid), asc(learning.index));
+      .orderBy(asc(learning.technique), asc(learning.index));
   } else {
     rows = await db
       .select()
       .from(learning)
-      .orderBy(asc(learning.technique_uuid), asc(learning.index));
+      .orderBy(asc(learning.technique), asc(learning.index));
   }
 
   return c.json(successResponse(rows));
@@ -74,7 +90,7 @@ learningRouter.post(
     // Use type assertion to work around drizzle-orm type inference issue
     // with foreign key references in insert values
     const insertValues = {
-      technique_uuid: body.technique_uuid,
+      technique: body.technique,
       index: body.index,
       language_code: body.language_code,
       text: body.text,
@@ -109,7 +125,7 @@ learningRouter.put(
     const rows = await db
       .update(learning)
       .set({
-        technique_uuid: body.technique_uuid ?? current.technique_uuid,
+        technique: body.technique ?? current.technique,
         index: body.index ?? current.index,
         language_code: body.language_code ?? current.language_code,
         text: body.text ?? current.text,

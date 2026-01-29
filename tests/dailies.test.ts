@@ -123,35 +123,6 @@ describe("Dailies API", () => {
     });
   });
 
-  describe("GET /api/v1/dailies/random", () => {
-    it("should return 404 when no dailies exist", async () => {
-      const res = await app.request("/api/v1/dailies/random", {
-        headers: getAuthHeaders(),
-      });
-      expect(res.status).toBe(404);
-    });
-
-    it("should return a random daily", async () => {
-      await app.request("/api/v1/dailies", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${API_TOKEN}`,
-        },
-        body: JSON.stringify({
-          date: "2024-03-10",
-          board: sampleBoard,
-          solution: sampleSolution,
-        }),
-      });
-
-      const res = await app.request("/api/v1/dailies/random", {
-        headers: getAuthHeaders(),
-      });
-      expect(res.status).toBe(200);
-    });
-  });
-
   describe("PUT /api/v1/dailies/:uuid", () => {
     it("should update a daily", async () => {
       const createRes = await app.request("/api/v1/dailies", {

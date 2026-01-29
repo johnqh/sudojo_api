@@ -5,7 +5,7 @@ import { db, techniques } from "../db";
 import {
   techniqueCreateSchema,
   techniqueUpdateSchema,
-  uuidParamSchema,
+  techniqueParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
@@ -14,15 +14,20 @@ const techniquesRouter = new Hono();
 
 // GET all techniques (public)
 techniquesRouter.get("/", async c => {
-  const levelUuid = c.req.query("level_uuid");
+  const levelParam = c.req.query("level");
 
   let rows;
-  if (levelUuid) {
-    rows = await db
-      .select()
-      .from(techniques)
-      .where(eq(techniques.level_uuid, levelUuid))
-      .orderBy(asc(techniques.title));
+  if (levelParam) {
+    const level = parseInt(levelParam, 10);
+    if (!isNaN(level)) {
+      rows = await db
+        .select()
+        .from(techniques)
+        .where(eq(techniques.level, level))
+        .orderBy(asc(techniques.title));
+    } else {
+      rows = await db.select().from(techniques).orderBy(asc(techniques.title));
+    }
   } else {
     rows = await db.select().from(techniques).orderBy(asc(techniques.title));
   }
@@ -30,16 +35,16 @@ techniquesRouter.get("/", async c => {
   return c.json(successResponse(rows));
 });
 
-// GET one technique by uuid (public)
+// GET one technique by technique number (public)
 techniquesRouter.get(
-  "/:uuid",
-  zValidator("param", uuidParamSchema),
+  "/:technique",
+  zValidator("param", techniqueParamSchema),
   async c => {
-    const { uuid } = c.req.valid("param");
+    const { technique } = c.req.valid("param");
     const rows = await db
       .select()
       .from(techniques)
-      .where(eq(techniques.uuid, uuid));
+      .where(eq(techniques.technique, technique));
 
     if (rows.length === 0) {
       return c.json(errorResponse("Technique not found"), 404);
@@ -60,8 +65,8 @@ techniquesRouter.post(
     const rows = await db
       .insert(techniques)
       .values({
-        level_uuid: body.level_uuid,
-        index: body.index,
+        technique: body.technique,
+        level: body.level,
         title: body.title,
         text: body.text,
       })
@@ -73,18 +78,18 @@ techniquesRouter.post(
 
 // PUT update technique (requires admin auth)
 techniquesRouter.put(
-  "/:uuid",
+  "/:technique",
   adminMiddleware,
-  zValidator("param", uuidParamSchema),
+  zValidator("param", techniqueParamSchema),
   zValidator("json", techniqueUpdateSchema),
   async c => {
-    const { uuid } = c.req.valid("param");
+    const { technique } = c.req.valid("param");
     const body = c.req.valid("json");
 
     const existing = await db
       .select()
       .from(techniques)
-      .where(eq(techniques.uuid, uuid));
+      .where(eq(techniques.technique, technique));
     if (existing.length === 0) {
       return c.json(errorResponse("Technique not found"), 404);
     }
@@ -93,13 +98,12 @@ techniquesRouter.put(
     const rows = await db
       .update(techniques)
       .set({
-        level_uuid: body.level_uuid ?? current.level_uuid,
-        index: body.index ?? current.index,
+        level: body.level ?? current.level,
         title: body.title ?? current.title,
         text: body.text ?? current.text,
         updated_at: new Date(),
       })
-      .where(eq(techniques.uuid, uuid))
+      .where(eq(techniques.technique, technique))
       .returning();
 
     return c.json(successResponse(rows[0]));
@@ -108,15 +112,15 @@ techniquesRouter.put(
 
 // DELETE technique (requires admin auth)
 techniquesRouter.delete(
-  "/:uuid",
+  "/:technique",
   adminMiddleware,
-  zValidator("param", uuidParamSchema),
+  zValidator("param", techniqueParamSchema),
   async c => {
-    const { uuid } = c.req.valid("param");
+    const { technique } = c.req.valid("param");
 
     const rows = await db
       .delete(techniques)
-      .where(eq(techniques.uuid, uuid))
+      .where(eq(techniques.technique, technique))
       .returning();
 
     if (rows.length === 0) {

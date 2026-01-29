@@ -40,7 +40,7 @@ describe("Levels API", () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${API_TOKEN}`,
         },
-        body: JSON.stringify({ index: 1, title: "Easy", text: "Easy puzzles" }),
+        body: JSON.stringify({ level: 1, title: "Easy", text: "Easy puzzles" }),
       });
 
       const res = await app.request("/api/v1/levels", {
@@ -58,7 +58,7 @@ describe("Levels API", () => {
       const res = await app.request("/api/v1/levels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index: 1, title: "Easy" }),
+        body: JSON.stringify({ level: 1, title: "Easy" }),
       });
       expect(res.status).toBe(401);
     });
@@ -70,7 +70,7 @@ describe("Levels API", () => {
           "Content-Type": "application/json",
           Authorization: "Bearer invalid-token",
         },
-        body: JSON.stringify({ index: 1, title: "Easy" }),
+        body: JSON.stringify({ level: 1, title: "Easy" }),
       });
       // Invalid tokens are rejected with 401 Unauthorized
       expect(res.status).toBe(401);
@@ -84,16 +84,16 @@ describe("Levels API", () => {
           Authorization: `Bearer ${API_TOKEN}`,
         },
         body: JSON.stringify({
-          index: 1,
+          level: 1,
           title: "Easy",
           text: "Easy puzzles for beginners",
           requires_subscription: false,
         }),
       });
       expect(res.status).toBe(201);
-      const body = await res.json() as ApiResponse<LevelData>;
+      const body = (await res.json()) as ApiResponse<LevelData>;
       expect(body.data!.title).toBe("Easy");
-      expect(body.data!.uuid).toBeDefined();
+      expect(body.data!.level).toBe(1);
     });
 
     it("should reject invalid data", async () => {
@@ -103,34 +103,39 @@ describe("Levels API", () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${API_TOKEN}`,
         },
-        body: JSON.stringify({ index: "not-a-number", title: "" }),
+        body: JSON.stringify({ level: "not-a-number", title: "" }),
       });
       expect(res.status).toBe(400);
     });
   });
 
-  describe("GET /api/v1/levels/:uuid", () => {
+  describe("GET /api/v1/levels/:level", () => {
     it("should return 404 for non-existent level", async () => {
-      const res = await app.request(
-        "/api/v1/levels/00000000-0000-0000-0000-000000000000",
-        { headers: getAuthHeaders() }
-      );
+      const res = await app.request("/api/v1/levels/12", {
+        headers: getAuthHeaders(),
+      });
       expect(res.status).toBe(404);
     });
 
-    it("should return level by uuid", async () => {
+    it("should return 400 for invalid level format", async () => {
+      const res = await app.request("/api/v1/levels/invalid", {
+        headers: getAuthHeaders(),
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("should return level by level number", async () => {
       // Create a level first
-      const createRes = await app.request("/api/v1/levels", {
+      await app.request("/api/v1/levels", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${API_TOKEN}`,
         },
-        body: JSON.stringify({ index: 1, title: "Medium" }),
+        body: JSON.stringify({ level: 1, title: "Medium" }),
       });
-      const created = (await createRes.json()) as ApiResponse<LevelData>;
 
-      const res = await app.request(`/api/v1/levels/${created.data!.uuid}`, {
+      const res = await app.request("/api/v1/levels/1", {
         headers: getAuthHeaders(),
       });
       expect(res.status).toBe(200);
@@ -139,20 +144,19 @@ describe("Levels API", () => {
     });
   });
 
-  describe("PUT /api/v1/levels/:uuid", () => {
+  describe("PUT /api/v1/levels/:level", () => {
     it("should update a level", async () => {
       // Create a level first
-      const createRes = await app.request("/api/v1/levels", {
+      await app.request("/api/v1/levels", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${API_TOKEN}`,
         },
-        body: JSON.stringify({ index: 1, title: "Easy" }),
+        body: JSON.stringify({ level: 1, title: "Easy" }),
       });
-      const created = await createRes.json() as ApiResponse<LevelData>;
 
-      const res = await app.request(`/api/v1/levels/${created.data!.uuid}`, {
+      const res = await app.request("/api/v1/levels/1", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -161,12 +165,12 @@ describe("Levels API", () => {
         body: JSON.stringify({ title: "Very Easy" }),
       });
       expect(res.status).toBe(200);
-      const body = await res.json() as ApiResponse<LevelData>;
+      const body = (await res.json()) as ApiResponse<LevelData>;
       expect(body.data!.title).toBe("Very Easy");
     });
 
     it("should reject update without auth", async () => {
-      const res = await app.request("/api/v1/levels/00000000-0000-0000-0000-000000000000", {
+      const res = await app.request("/api/v1/levels/1", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Updated" }),
@@ -175,39 +179,35 @@ describe("Levels API", () => {
     });
   });
 
-  describe("DELETE /api/v1/levels/:uuid", () => {
+  describe("DELETE /api/v1/levels/:level", () => {
     it("should delete a level", async () => {
       // Create a level first
-      const createRes = await app.request("/api/v1/levels", {
+      await app.request("/api/v1/levels", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${API_TOKEN}`,
         },
-        body: JSON.stringify({ index: 1, title: "ToDelete" }),
+        body: JSON.stringify({ level: 1, title: "ToDelete" }),
       });
-      const created = (await createRes.json()) as ApiResponse<LevelData>;
 
-      const res = await app.request(`/api/v1/levels/${created.data!.uuid}`, {
+      const res = await app.request("/api/v1/levels/1", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${API_TOKEN}` },
       });
       expect(res.status).toBe(200);
 
       // Verify it's deleted
-      const getRes = await app.request(`/api/v1/levels/${created.data!.uuid}`, {
+      const getRes = await app.request("/api/v1/levels/1", {
         headers: getAuthHeaders(),
       });
       expect(getRes.status).toBe(404);
     });
 
     it("should reject delete without auth", async () => {
-      const res = await app.request(
-        "/api/v1/levels/00000000-0000-0000-0000-000000000000",
-        {
-          method: "DELETE",
-        }
-      );
+      const res = await app.request("/api/v1/levels/1", {
+        method: "DELETE",
+      });
       expect(res.status).toBe(401);
     });
   });

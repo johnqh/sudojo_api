@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.52",
+  "version": "1.0.53",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -37,7 +37,7 @@
     "@sudobility/auth_service": "^1.1.1",
     "@sudobility/ratelimit_service": "^1.0.17",
     "@sudobility/subscription_service": "^1.0.1",
-    "@sudobility/sudojo_types": "^1.2.9",
+    "@sudobility/sudojo_types": "^1.2.11",
     "@sudobility/types": "^1.9.48",
     "drizzle-orm": "^0.45.0",
     "firebase-admin": "^13.6.0",

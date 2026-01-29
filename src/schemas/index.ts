@@ -2,37 +2,43 @@ import { z } from "zod";
 
 // Level schemas
 export const levelCreateSchema = z.object({
-  index: z.number().int(),
+  level: z.number().int().min(1).max(12),
   title: z.string().min(1).max(255),
   text: z.string().nullish().default(""),
   requires_subscription: z.boolean().optional().default(false),
 });
 
 export const levelUpdateSchema = z.object({
-  index: z.number().int().optional(),
   title: z.string().min(1).max(255).optional(),
   text: z.string().nullish(),
   requires_subscription: z.boolean().optional(),
 });
 
+export const levelParamSchema = z.object({
+  level: z.coerce.number().int().min(1).max(12),
+});
+
 // Technique schemas
 export const techniqueCreateSchema = z.object({
-  level_uuid: z.string().uuid(),
-  index: z.number().int(),
+  technique: z.number().int().min(1).max(37),
+  level: z.number().int().min(1).max(12),
   title: z.string().min(1).max(255),
   text: z.string().nullish().default(""),
 });
 
 export const techniqueUpdateSchema = z.object({
-  level_uuid: z.string().uuid().optional(),
-  index: z.number().int().optional(),
+  level: z.number().int().min(1).max(12).optional(),
   title: z.string().min(1).max(255).optional(),
   text: z.string().nullish(),
 });
 
+export const techniqueParamSchema = z.object({
+  technique: z.coerce.number().int().min(1).max(37),
+});
+
 // Learning schemas
 export const learningCreateSchema = z.object({
-  technique_uuid: z.string().uuid(),
+  technique: z.number().int().min(1).max(37),
   index: z.number().int(),
   language_code: z.string().min(2).max(10).nullish().default("en"),
   text: z.string().nullish().default(""),
@@ -40,7 +46,7 @@ export const learningCreateSchema = z.object({
 });
 
 export const learningUpdateSchema = z.object({
-  technique_uuid: z.string().uuid().optional(),
+  technique: z.number().int().min(1).max(37).optional(),
   index: z.number().int().optional(),
   language_code: z.string().min(2).max(10).nullish(),
   text: z.string().nullish(),
@@ -49,7 +55,7 @@ export const learningUpdateSchema = z.object({
 
 // Board schemas
 export const boardCreateSchema = z.object({
-  level_uuid: z.string().uuid().nullish(),
+  level: z.number().int().min(1).max(12).nullish(),
   symmetrical: z.boolean().optional().default(false),
   board: z.string().length(81),
   solution: z.string().length(81),
@@ -57,7 +63,7 @@ export const boardCreateSchema = z.object({
 });
 
 export const boardUpdateSchema = z.object({
-  level_uuid: z.string().uuid().nullish(),
+  level: z.number().int().min(1).max(12).nullish(),
   symmetrical: z.boolean().optional(),
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
@@ -68,7 +74,7 @@ export const boardUpdateSchema = z.object({
 export const dailyCreateSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   board_uuid: z.string().uuid().nullish(),
-  level_uuid: z.string().uuid().nullish(),
+  level: z.number().int().min(1).max(12).nullish(),
   techniques: z.number().int().optional().default(0),
   board: z.string().length(81),
   solution: z.string().length(81),
@@ -80,7 +86,7 @@ export const dailyUpdateSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
   board_uuid: z.string().uuid().nullish(),
-  level_uuid: z.string().uuid().nullish(),
+  level: z.number().int().min(1).max(12).nullish(),
   techniques: z.number().int().optional(),
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
@@ -89,7 +95,7 @@ export const dailyUpdateSchema = z.object({
 // Challenge schemas
 export const challengeCreateSchema = z.object({
   board_uuid: z.string().uuid().nullish(),
-  level_uuid: z.string().uuid().nullish(),
+  level: z.number().int().min(1).max(12).nullish(),
   difficulty: z.number().int().min(1).max(10).optional().default(1),
   board: z.string().length(81),
   solution: z.string().length(81),
@@ -97,7 +103,7 @@ export const challengeCreateSchema = z.object({
 
 export const challengeUpdateSchema = z.object({
   board_uuid: z.string().uuid().nullish(),
-  level_uuid: z.string().uuid().nullish(),
+  level: z.number().int().min(1).max(12).nullish(),
   difficulty: z.number().int().min(1).max(10).optional(),
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
@@ -141,7 +147,7 @@ export const techniqueExampleUpdateSchema = z.object({
 
 // Technique practice schemas
 export const techniquePracticeCreateSchema = z.object({
-  technique_uuid: z.string().uuid(),
+  technique: z.number().int().min(1).max(37),
   board: z.string().length(81),
   pencilmarks: z.string().nullish(),
   solution: z.string().length(81),

@@ -14,27 +14,43 @@ const challengesRouter = new Hono();
 
 // GET all challenges (public)
 challengesRouter.get("/", async c => {
-  const levelUuid = c.req.query("level_uuid");
+  const levelParam = c.req.query("level");
   const difficulty = c.req.query("difficulty");
 
   let rows;
-  if (levelUuid && difficulty) {
-    rows = await db
-      .select()
-      .from(challenges)
-      .where(
-        and(
-          eq(challenges.level_uuid, levelUuid),
-          eq(challenges.difficulty, parseInt(difficulty))
+  if (levelParam && difficulty) {
+    const level = parseInt(levelParam, 10);
+    if (!isNaN(level)) {
+      rows = await db
+        .select()
+        .from(challenges)
+        .where(
+          and(
+            eq(challenges.level, level),
+            eq(challenges.difficulty, parseInt(difficulty))
+          )
         )
-      )
-      .orderBy(asc(challenges.difficulty));
-  } else if (levelUuid) {
-    rows = await db
-      .select()
-      .from(challenges)
-      .where(eq(challenges.level_uuid, levelUuid))
-      .orderBy(asc(challenges.difficulty));
+        .orderBy(asc(challenges.difficulty));
+    } else {
+      rows = await db
+        .select()
+        .from(challenges)
+        .orderBy(asc(challenges.difficulty), desc(challenges.created_at));
+    }
+  } else if (levelParam) {
+    const level = parseInt(levelParam, 10);
+    if (!isNaN(level)) {
+      rows = await db
+        .select()
+        .from(challenges)
+        .where(eq(challenges.level, level))
+        .orderBy(asc(challenges.difficulty));
+    } else {
+      rows = await db
+        .select()
+        .from(challenges)
+        .orderBy(asc(challenges.difficulty), desc(challenges.created_at));
+    }
   } else if (difficulty) {
     rows = await db
       .select()
@@ -53,29 +69,47 @@ challengesRouter.get("/", async c => {
 
 // GET random challenge (public)
 challengesRouter.get("/random", async c => {
-  const levelUuid = c.req.query("level_uuid");
+  const levelParam = c.req.query("level");
   const difficulty = c.req.query("difficulty");
 
   let rows;
-  if (levelUuid && difficulty) {
-    rows = await db
-      .select()
-      .from(challenges)
-      .where(
-        and(
-          eq(challenges.level_uuid, levelUuid),
-          eq(challenges.difficulty, parseInt(difficulty))
+  if (levelParam && difficulty) {
+    const level = parseInt(levelParam, 10);
+    if (!isNaN(level)) {
+      rows = await db
+        .select()
+        .from(challenges)
+        .where(
+          and(
+            eq(challenges.level, level),
+            eq(challenges.difficulty, parseInt(difficulty))
+          )
         )
-      )
-      .orderBy(sql`RANDOM()`)
-      .limit(1);
-  } else if (levelUuid) {
-    rows = await db
-      .select()
-      .from(challenges)
-      .where(eq(challenges.level_uuid, levelUuid))
-      .orderBy(sql`RANDOM()`)
-      .limit(1);
+        .orderBy(sql`RANDOM()`)
+        .limit(1);
+    } else {
+      rows = await db
+        .select()
+        .from(challenges)
+        .orderBy(sql`RANDOM()`)
+        .limit(1);
+    }
+  } else if (levelParam) {
+    const level = parseInt(levelParam, 10);
+    if (!isNaN(level)) {
+      rows = await db
+        .select()
+        .from(challenges)
+        .where(eq(challenges.level, level))
+        .orderBy(sql`RANDOM()`)
+        .limit(1);
+    } else {
+      rows = await db
+        .select()
+        .from(challenges)
+        .orderBy(sql`RANDOM()`)
+        .limit(1);
+    }
   } else if (difficulty) {
     rows = await db
       .select()
@@ -129,7 +163,7 @@ challengesRouter.post(
       .insert(challenges)
       .values({
         board_uuid: body.board_uuid ?? null,
-        level_uuid: body.level_uuid ?? null,
+        level: body.level ?? null,
         difficulty: body.difficulty,
         board: body.board,
         solution: body.solution,
@@ -164,8 +198,8 @@ challengesRouter.put(
       .set({
         board_uuid:
           body.board_uuid !== undefined ? body.board_uuid : current.board_uuid,
-        level_uuid:
-          body.level_uuid !== undefined ? body.level_uuid : current.level_uuid,
+        level:
+          body.level !== undefined ? body.level : current.level,
         difficulty: body.difficulty ?? current.difficulty,
         board: body.board ?? current.board,
         solution: body.solution ?? current.solution,

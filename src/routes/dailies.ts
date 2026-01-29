@@ -18,15 +18,15 @@ import {
 const dailiesRouter = new Hono();
 
 /**
- * Gets a random puzzle with level index 3-5, scrambles it, and returns as a fallback daily.
+ * Gets a random puzzle with level 3-5, scrambles it, and returns as a fallback daily.
  * Used when no daily puzzle exists for a requested date.
  */
 async function getRandomFallbackPuzzle(date: string) {
-  // Get all levels with index 3, 4, or 5
+  // Get all levels 3, 4, or 5
   const eligibleLevels = await db
     .select()
     .from(levels)
-    .where(and(gte(levels.index, 3), lte(levels.index, 5)));
+    .where(and(gte(levels.level, 3), lte(levels.level, 5)));
 
   if (eligibleLevels.length === 0) {
     return null;
@@ -36,11 +36,11 @@ async function getRandomFallbackPuzzle(date: string) {
   const randomLevel =
     eligibleLevels[Math.floor(Math.random() * eligibleLevels.length)]!;
 
-  // Get a random puzzle with that level_uuid
+  // Get a random puzzle with that level
   const puzzleRows = await db
     .select()
     .from(boards)
-    .where(eq(boards.level_uuid, randomLevel.uuid))
+    .where(eq(boards.level, randomLevel.level))
     .orderBy(sql`RANDOM()`)
     .limit(1);
 
@@ -63,7 +63,7 @@ async function getRandomFallbackPuzzle(date: string) {
       uuid: `fallback-${date}`,
       date,
       board_uuid: puzzle.uuid,
-      level_uuid: puzzle.level_uuid,
+      level: puzzle.level,
       techniques: puzzle.techniques,
       board: scrambled.puzzle,
       solution: scrambled.solution,
@@ -79,7 +79,7 @@ async function getRandomFallbackPuzzle(date: string) {
     uuid: `fallback-${date}`,
     date,
     board_uuid: puzzle.uuid,
-    level_uuid: randomLevel.uuid,
+    level: randomLevel.level,
     techniques: puzzle.techniques,
     board: scrambled.puzzle,
     solution: scrambled.solution,
@@ -95,13 +95,13 @@ dailiesRouter.get("/", async c => {
 });
 
 // GET today's daily (public)
-// Falls back to a random scrambled puzzle with level index 3-5 if no daily exists
+// Falls back to a random scrambled puzzle with level 3-5 if no daily exists
 dailiesRouter.get("/today", async c => {
   const today = new Date().toISOString().split("T")[0] as string;
   const rows = await db.select().from(dailies).where(eq(dailies.date, today));
 
   if (rows.length === 0) {
-    // Fallback: get a random puzzle with level index 3-5 and scramble it
+    // Fallback: get a random puzzle with level 3-5 and scramble it
     const fallback = await getRandomFallbackPuzzle(today);
     if (!fallback) {
       return c.json(errorResponse("No puzzles available"), 404);
@@ -113,7 +113,7 @@ dailiesRouter.get("/today", async c => {
 });
 
 // GET daily by date (public)
-// Falls back to a random scrambled puzzle with level index 3-5 if no daily exists
+// Falls back to a random scrambled puzzle with level 3-5 if no daily exists
 dailiesRouter.get(
   "/date/:date",
   zValidator("param", dateParamSchema),
@@ -122,7 +122,7 @@ dailiesRouter.get(
     const rows = await db.select().from(dailies).where(eq(dailies.date, date));
 
     if (rows.length === 0) {
-      // Fallback: get a random puzzle with level index 3-5 and scramble it
+      // Fallback: get a random puzzle with level 3-5 and scramble it
       const fallback = await getRandomFallbackPuzzle(date);
       if (!fallback) {
         return c.json(errorResponse("No puzzles available"), 404);
@@ -159,7 +159,7 @@ dailiesRouter.post(
       .values({
         date: body.date,
         board_uuid: body.board_uuid ?? null,
-        level_uuid: body.level_uuid ?? null,
+        level: body.level ?? null,
         techniques: body.techniques,
         board: body.board,
         solution: body.solution,
@@ -195,8 +195,8 @@ dailiesRouter.put(
         date: body.date ?? current.date,
         board_uuid:
           body.board_uuid !== undefined ? body.board_uuid : current.board_uuid,
-        level_uuid:
-          body.level_uuid !== undefined ? body.level_uuid : current.level_uuid,
+        level:
+          body.level !== undefined ? body.level : current.level,
         techniques: body.techniques ?? current.techniques,
         board: body.board ?? current.board,
         solution: body.solution ?? current.solution,
