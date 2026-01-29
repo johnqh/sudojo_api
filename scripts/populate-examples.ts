@@ -153,7 +153,7 @@ function applyHint(
     }
   }
 
-  const pencilmarks = solveData.board.board.pencilmarks?.pencilmarks || null;
+  const pencilmarks = solveData.board.pencilmark?.numbers || null;
   return { newUser: userArr.join(""), pencilmarks };
 }
 
@@ -234,7 +234,7 @@ async function processBoard(
     }
 
     // Get current pencilmarks from solver response
-    const currentPencilmarks = solveData.board.board.pencilmarks?.pencilmarks || null;
+    const currentPencilmarks = solveData.board.pencilmark?.numbers || null;
 
     const techniqueId = TECHNIQUE_TITLE_TO_ID[step.title];
     if (!techniqueId) {
