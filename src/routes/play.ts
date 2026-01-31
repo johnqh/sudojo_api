@@ -10,7 +10,7 @@
 
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { firebaseAuthMiddleware } from "../middleware/firebaseAuth";
 import { gameStartSchema, gameFinishSchema } from "../schemas";
 import { db } from "../db";

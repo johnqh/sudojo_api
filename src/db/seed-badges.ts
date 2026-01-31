@@ -57,7 +57,7 @@ async function seedBadges() {
         })
         .onConflictDoNothing();
       console.log(`  Created badge: level_${level} (${beltName})`);
-    } catch (error) {
+    } catch (_error) {
       console.log(`  Badge level_${level} already exists, skipping...`);
     }
   }
@@ -76,7 +76,7 @@ async function seedBadges() {
         })
         .onConflictDoNothing();
       console.log(`  Created badge: games_${milestone.count} (${milestone.title})`);
-    } catch (error) {
+    } catch (_error) {
       console.log(`  Badge games_${milestone.count} already exists, skipping...`);
     }
   }
