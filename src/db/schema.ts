@@ -2,6 +2,7 @@ import {
   pgTable,
   uuid,
   integer,
+  bigint,
   varchar,
   text,
   boolean,
@@ -53,7 +54,7 @@ export const boards = pgTable("boards", {
   symmetrical: boolean("symmetrical").default(false),
   board: varchar("board", { length: 81 }).notNull(),
   solution: varchar("solution", { length: 81 }).notNull(),
-  techniques: integer("techniques").default(0),
+  techniques: bigint("techniques", { mode: "number" }).default(0),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 });
@@ -67,7 +68,7 @@ export const dailies = pgTable("dailies", {
   level: integer("level").references(() => levels.level, {
     onDelete: "set null",
   }),
-  techniques: integer("techniques").default(0),
+  techniques: bigint("techniques", { mode: "number" }).default(0),
   board: varchar("board", { length: 81 }).notNull(),
   solution: varchar("solution", { length: 81 }).notNull(),
   created_at: timestamp("created_at").defaultNow(),
@@ -110,7 +111,7 @@ export const techniqueExamples = pgTable("technique_examples", {
   /** Solution for reference */
   solution: varchar("solution", { length: 81 }).notNull(),
   /** Bitfield of ALL techniques applicable at this board state */
-  techniques_bitfield: integer("techniques_bitfield").notNull(),
+  techniques_bitfield: bigint("techniques_bitfield", { mode: "number" }).notNull(),
   /** Primary technique (the one solver would use first) */
   primary_technique: integer("primary_technique").notNull(),
   /** Hint data (JSON with areas, cells, description) */
