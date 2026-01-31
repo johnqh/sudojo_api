@@ -35,7 +35,9 @@ examplesRouter.get("/", async c => {
     if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 37) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
-    const bit = 1 << (techniqueId - 1);
+    // Use BigInt for bit shift to support techniques >= 32, then convert to Number
+    // (safe for techniques up to 52 which is within Number.MAX_SAFE_INTEGER)
+    const bit = Number(BigInt(1) << BigInt(techniqueId - 1));
     rows = await db
       .select()
       .from(techniqueExamples)
