@@ -3,11 +3,22 @@ import { getRequiredEnv } from "../lib/env-helper";
 import {
   successResponse,
   errorResponse,
+  addTechnique,
+  isBoardFilled,
+  getMergedBoardState,
+  hasInvalidPencilmarksStep,
+  hasPencilmarkContent,
+  EMPTY_BOARD,
+  EMPTY_PENCILMARKS,
   type SolveData,
   type ValidateData,
   type GenerateData,
   type HintAccessDeniedResponse,
+  type TechniqueId,
 } from "@sudobility/sudojo_types";
+
+// Maximum iterations for iterative solving (prevents infinite loops)
+const MAX_SOLVE_ITERATIONS = 200;
 import {
   hintAccessMiddleware,
   getRequiredEntitlement,
@@ -38,9 +49,7 @@ async function proxySolverRequest<T>(
   return response.json() as Promise<SolverResponse<T>>;
 }
 
-// Default values for optional solve parameters
-const DEFAULT_USER = "0".repeat(81); // 81 zeros - user hasn't entered anything
-const DEFAULT_PENCILMARKS = ",".repeat(80); // 81 empty elements (80 commas)
+// Default autopencilmarks setting
 const DEFAULT_AUTOPENCILMARKS = "false";
 
 // Helper to call solver with given params
@@ -62,14 +71,91 @@ async function callSolver(
   return proxySolverRequest<SolveData>("solve", params.toString());
 }
 
+// Validate a puzzle by iteratively solving it (matches frontend TechniqueExtractor)
+async function validateByIterativeSolve(
+  original: string,
+  autoPencilmarks: boolean
+): Promise<ValidateData | { error: string }> {
+  // Start with empty user input (all zeros) to match how frontend TechniqueExtractor works
+  let userInput = "0".repeat(81);
+  let pencilmarks = "";
+  let currentAutoPencilmarks = autoPencilmarks;
+  let techniquesBitfield = 0;
+  let maxLevel = 0;
+  let iterations = 0;
+
+  while (iterations < MAX_SOLVE_ITERATIONS) {
+    if (isBoardFilled(original, userInput)) break;
+
+    iterations++;
+
+    // Check if we have actual pencilmarks (not just empty commas)
+    const hasPencilmarks = pencilmarks && hasPencilmarkContent(pencilmarks);
+
+    const response = await callSolver(
+      original,
+      userInput,
+      hasPencilmarks
+        ? String(currentAutoPencilmarks)
+        : String(autoPencilmarks),
+      hasPencilmarks ? pencilmarks : EMPTY_PENCILMARKS
+    );
+
+    if (!response.success || !response.data?.hints?.steps?.length) {
+      return { error: "Solver failed to find next step" };
+    }
+
+    if (hasInvalidPencilmarksStep(response.data.hints.steps)) {
+      return { error: "Invalid pencilmarks detected" };
+    }
+
+    const hints = response.data.hints;
+    if (hints.technique > 0) {
+      techniquesBitfield = addTechnique(
+        techniquesBitfield,
+        hints.technique as TechniqueId
+      );
+    }
+    if (hints.level > 0) {
+      maxLevel = Math.max(maxLevel, hints.level);
+    }
+
+    const boardData = response.data.board;
+    if (boardData?.user) {
+      userInput = boardData.user;
+      pencilmarks = boardData.pencilmark?.numbers ?? "";
+      currentAutoPencilmarks =
+        boardData.pencilmark?.autopencil ?? autoPencilmarks;
+      if (isBoardFilled(original, userInput)) break;
+    } else {
+      return { error: "Solver did not return board state" };
+    }
+  }
+
+  if (!isBoardFilled(original, userInput)) {
+    return { error: "Failed to solve puzzle within iteration limit" };
+  }
+
+  const solution = getMergedBoardState(original, userInput);
+
+  return {
+    board: {
+      level: maxLevel,
+      techniques: techniquesBitfield,
+      original,
+      solution,
+    },
+  };
+}
+
 // Helper to handle solve request with hint access control
 async function handleSolveRequest(c: Context) {
   try {
     // Get query params with defaults
     const original = c.req.query("original") ?? "";
-    const user = c.req.query("user") ?? DEFAULT_USER;
+    const user = c.req.query("user") ?? EMPTY_BOARD;
     const autopencilmarks = c.req.query("autopencilmarks") ?? DEFAULT_AUTOPENCILMARKS;
-    const pencilmarks = c.req.query("pencilmarks") ?? DEFAULT_PENCILMARKS;
+    const pencilmarks = c.req.query("pencilmarks") ?? EMPTY_PENCILMARKS;
     const techniques = c.req.query("techniques");
 
     let result: SolverResponse<SolveData>;
@@ -134,26 +220,30 @@ async function handleSolveRequest(c: Context) {
 //   - techniques: comma-delimited list of technique numbers to filter (optional, e.g., "1,2,3")
 solverRouter.get("/solve", hintAccessMiddleware, handleSolveRequest);
 
-// GET /validate - Validate a puzzle has a unique solution (public)
-// Query params: original
+// GET /validate - Validate a puzzle by iteratively solving it
+// Matches frontend TechniqueExtractor behavior - iteratively calls /solve
+// to accumulate techniques and level, rather than calling solver /validate directly.
+// Query params:
+//   - original: 81-char puzzle string (required)
+//   - autopencilmarks: true/false (optional, defaults to false)
 solverRouter.get("/validate", async c => {
   try {
-    const queryString = new URL(c.req.url).search.slice(1);
-    const result = await proxySolverRequest<ValidateData>(
-      "validate",
-      queryString
-    );
+    const original = c.req.query("original") ?? "";
+    const autoPencilmarks = c.req.query("autopencilmarks") === "true";
 
-    if (!result.success || !result.data) {
-      const errorMsg = result.error
-        ? `${result.error.code}: ${result.error.message}`
-        : "Invalid puzzle";
-      return c.json(errorResponse(errorMsg), 400);
+    if (!original || original.length !== 81) {
+      return c.json(errorResponse("Invalid puzzle: original must be 81 characters"), 400);
     }
 
-    return c.json(successResponse(result.data));
+    const result = await validateByIterativeSolve(original, autoPencilmarks);
+
+    if ("error" in result) {
+      return c.json(errorResponse(result.error), 400);
+    }
+
+    return c.json(successResponse(result));
   } catch (error) {
-    console.error("Solver proxy error:", error);
+    console.error("Validate error:", error);
     return c.json(errorResponse("Solver service unavailable"), 503);
   }
 });

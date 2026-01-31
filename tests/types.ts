@@ -88,14 +88,18 @@ export interface SolveData {
   }>;
 }
 
+// Validate/Generate board has level, techniques, original, solution
+export interface ValidateBoardData {
+  level: number;
+  techniques: number;
+  original: string;
+  solution: string;
+}
+
 export interface ValidateData {
-  board: SolverBoard;
-  hints: null;
+  board: ValidateBoardData;
 }
 
 export interface GenerateData {
-  board: SolverBoard;
-  level: number;
-  techniques: number;
-  hints: null;
+  board: ValidateBoardData;
 }

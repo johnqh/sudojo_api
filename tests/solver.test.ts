@@ -87,7 +87,8 @@ describe("Solver API", () => {
         expect(body.data?.board.original).toBe(samplePuzzle);
         expect(body.data?.board.solution).toBeDefined();
         expect(body.data?.board.solution?.length).toBe(81);
-        expect(body.data?.hints).toBeNull();
+        expect(body.data?.board.level).toBeDefined();
+        expect(body.data?.board.techniques).toBeDefined();
       } else {
         // Solver service might be unavailable
         expect([400, 503]).toContain(res.status);
@@ -127,9 +128,8 @@ describe("Solver API", () => {
         expect(body.data?.board.original.length).toBe(81);
         expect(body.data?.board.solution).toBeDefined();
         expect(body.data?.board.solution?.length).toBe(81);
-        expect(body.data?.level).toBeDefined();
-        expect(body.data?.techniques).toBeDefined();
-        expect(body.data?.hints).toBeNull();
+        expect(body.data?.board.level).toBeDefined();
+        expect(body.data?.board.techniques).toBeDefined();
       } else {
         // Solver service might be unavailable
         expect([500, 503]).toContain(res.status);
