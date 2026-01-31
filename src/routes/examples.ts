@@ -8,7 +8,12 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  techniqueToBit,
+  type TechniqueId,
+} from "@sudobility/sudojo_types";
 
 const examplesRouter = new Hono();
 
@@ -35,9 +40,7 @@ examplesRouter.get("/", async c => {
     if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 37) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
-    // Use BigInt for bit shift to support techniques >= 32, then convert to Number
-    // (safe for techniques up to 52 which is within Number.MAX_SAFE_INTEGER)
-    const bit = Number(BigInt(1) << BigInt(techniqueId - 1));
+    const bit = techniqueToBit(techniqueId as TechniqueId);
     rows = await db
       .select()
       .from(techniqueExamples)

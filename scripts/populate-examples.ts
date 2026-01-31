@@ -19,6 +19,7 @@ import {
   TechniqueId,
   TECHNIQUE_TITLE_TO_ID,
   techniqueToBit,
+  addTechnique,
   type SolveData,
   type SolverHintStep,
 } from "@sudobility/sudojo_types";
@@ -240,7 +241,7 @@ async function processBoard(
     if (!techniqueId) {
       console.warn(`Unknown technique: ${step.title}`);
     } else {
-      techniquesBitfield |= techniqueToBit(techniqueId);
+      techniquesBitfield = addTechnique(techniquesBitfield, techniqueId);
 
       // Check if we need more examples for this technique
       if (targetTechniques.has(techniqueId) && needsMoreExamples(techniqueId)) {
