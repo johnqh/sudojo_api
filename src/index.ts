@@ -40,6 +40,8 @@ initDatabase()
 export default {
   port,
   fetch: app.fetch,
+  // Increase idle timeout for long-running requests like /validate (default is 10s)
+  idleTimeout: 120, // 2 minutes
 };
 
 // Export app for testing

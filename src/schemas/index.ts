@@ -154,3 +154,43 @@ export const techniquePracticeCreateSchema = z.object({
   hint_data: z.string().nullish(),
   source_example_uuid: z.string().uuid().nullish(),
 });
+
+// =============================================================================
+// Gamification schemas
+// =============================================================================
+
+// Play session schemas
+export const gameStartSchema = z.object({
+  board: z.string().length(81),
+  solution: z.string().length(81),
+  level: z.number().int().min(1).max(12),
+  techniques: z.number().int().default(0),
+  puzzleType: z.enum(["daily", "level"]),
+  puzzleId: z.string().max(100).optional(),
+});
+
+export const gameFinishSchema = z.object({
+  elapsedTime: z.number().int().min(0), // seconds from frontend timer
+});
+
+// Badge definition schemas (admin)
+export const badgeDefinitionCreateSchema = z.object({
+  badgeType: z.string().min(1).max(50),
+  badgeKey: z.string().min(1).max(100),
+  title: z.string().min(1).max(255),
+  description: z.string().nullish(),
+  iconUrl: z.string().url().max(500).nullish(),
+  requirementValue: z.number().int().nullish(),
+});
+
+export const badgeDefinitionUpdateSchema = z.object({
+  badgeType: z.string().min(1).max(50).optional(),
+  title: z.string().min(1).max(255).optional(),
+  description: z.string().nullish(),
+  iconUrl: z.string().url().max(500).nullish(),
+  requirementValue: z.number().int().nullish(),
+});
+
+export const badgeKeyParamSchema = z.object({
+  badgeKey: z.string().min(1).max(100),
+});

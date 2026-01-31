@@ -8,6 +8,8 @@ import {
   boolean,
   timestamp,
   date,
+  jsonb,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createRateLimitCountersTablePublic } from "@sudobility/ratelimit_service";
 
@@ -149,6 +151,74 @@ export const techniquePractices = pgTable("technique_practices", {
     }
   ),
   created_at: timestamp("created_at").defaultNow(),
+});
+
+// =============================================================================
+// Gamification Tables
+// =============================================================================
+
+/** User gamification stats - total points, level, games completed */
+export const userStats = pgTable("user_stats", {
+  userId: varchar("user_id", { length: 128 }).primaryKey(),
+  totalPoints: bigint("total_points", { mode: "number" }).notNull().default(0),
+  userLevel: integer("user_level").notNull().default(0),
+  gamesCompleted: integer("games_completed").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+/** Badge definitions - flexible badge system with types and requirements */
+export const badgeDefinitions = pgTable("badge_definitions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  badgeType: varchar("badge_type", { length: 50 }).notNull(), // 'level_mastery', 'games_played', etc.
+  badgeKey: varchar("badge_key", { length: 100 }).unique().notNull(), // 'level_1', 'games_100', etc.
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  iconUrl: varchar("icon_url", { length: 500 }),
+  requirementValue: integer("requirement_value"), // e.g., level 5, or 100 games
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+/** User earned badges */
+export const userBadges = pgTable(
+  "user_badges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: varchar("user_id", { length: 128 }).notNull(),
+    badgeKey: varchar("badge_key", { length: 100 })
+      .notNull()
+      .references(() => badgeDefinitions.badgeKey),
+    earnedAt: timestamp("earned_at").defaultNow(),
+  },
+  table => ({
+    uniqueUserBadge: unique().on(table.userId, table.badgeKey),
+  })
+);
+
+/** Active game session - one per user, tracks current game state */
+export const gameSessions = pgTable("game_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id", { length: 128 }).unique().notNull(), // UNIQUE enforces one active session per user
+  board: varchar("board", { length: 81 }).notNull(),
+  solution: varchar("solution", { length: 81 }).notNull(),
+  level: integer("level").notNull(),
+  techniques: bigint("techniques", { mode: "number" }).default(0),
+  hintUsed: boolean("hint_used").notNull().default(false),
+  hintsCount: integer("hints_count").notNull().default(0),
+  hintPointsEarned: integer("hint_points_earned").notNull().default(0),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  puzzleType: varchar("puzzle_type", { length: 20 }).notNull(), // 'daily', 'level'
+  puzzleId: varchar("puzzle_id", { length: 100 }), // date for daily, uuid for level
+});
+
+/** Point transaction history - audit trail for all point changes */
+export const pointTransactions = pgTable("point_transactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  points: integer("points").notNull(),
+  transactionType: varchar("transaction_type", { length: 50 }).notNull(), // 'puzzle_complete', 'hint_used'
+  metadata: jsonb("metadata"), // {level, puzzle_type, multipliers, etc.}
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // =============================================================================

@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.65",
+  "version": "1.0.66",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
-    "db:init": "bun run src/db/init.ts"
+    "db:init": "bun run src/db/init.ts",
+    "db:seed-badges": "bun run src/db/seed-badges.ts"
   },
   "devDependencies": {
     "vitest": "^4.0.4",
@@ -36,7 +37,7 @@
     "@sudobility/auth_service": "^1.1.2",
     "@sudobility/ratelimit_service": "^1.0.18",
     "@sudobility/subscription_service": "^1.0.1",
-    "@sudobility/sudojo_types": "^1.2.20",
+    "@sudobility/sudojo_types": "^1.2.21",
     "@sudobility/types": "^1.9.49",
     "drizzle-orm": "^0.45.0",
     "firebase-admin": "^13.6.0",

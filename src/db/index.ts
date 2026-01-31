@@ -159,5 +159,94 @@ export async function closeDatabase() {
   }
 }
 
+/**
+ * Initialize gamification tables
+ */
+export async function initGamificationTables() {
+  const client = getClient();
+
+  // User stats table
+  await client`
+    CREATE TABLE IF NOT EXISTS user_stats (
+      user_id VARCHAR(128) PRIMARY KEY,
+      total_points BIGINT NOT NULL DEFAULT 0,
+      user_level INTEGER NOT NULL DEFAULT 0,
+      games_completed INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
+  // Badge definitions table
+  await client`
+    CREATE TABLE IF NOT EXISTS badge_definitions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      badge_type VARCHAR(50) NOT NULL,
+      badge_key VARCHAR(100) UNIQUE NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      description TEXT,
+      icon_url VARCHAR(500),
+      requirement_value INTEGER,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
+  // User badges table
+  await client`
+    CREATE TABLE IF NOT EXISTS user_badges (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id VARCHAR(128) NOT NULL,
+      badge_key VARCHAR(100) NOT NULL REFERENCES badge_definitions(badge_key),
+      earned_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, badge_key)
+    )
+  `;
+
+  // Game sessions table (one active session per user)
+  await client`
+    CREATE TABLE IF NOT EXISTS game_sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id VARCHAR(128) UNIQUE NOT NULL,
+      board VARCHAR(81) NOT NULL,
+      solution VARCHAR(81) NOT NULL,
+      level INTEGER NOT NULL,
+      techniques BIGINT DEFAULT 0,
+      hint_used BOOLEAN NOT NULL DEFAULT FALSE,
+      hints_count INTEGER NOT NULL DEFAULT 0,
+      hint_points_earned INTEGER NOT NULL DEFAULT 0,
+      started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      puzzle_type VARCHAR(20) NOT NULL,
+      puzzle_id VARCHAR(100)
+    )
+  `;
+
+  // Point transactions table (audit trail)
+  await client`
+    CREATE TABLE IF NOT EXISTS point_transactions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id VARCHAR(128) NOT NULL,
+      points INTEGER NOT NULL,
+      transaction_type VARCHAR(50) NOT NULL,
+      metadata JSONB,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
+  // Create indexes for better query performance
+  await client`
+    CREATE INDEX IF NOT EXISTS idx_user_badges_user_id ON user_badges(user_id)
+  `;
+
+  await client`
+    CREATE INDEX IF NOT EXISTS idx_point_transactions_user_id ON point_transactions(user_id)
+  `;
+
+  await client`
+    CREATE INDEX IF NOT EXISTS idx_point_transactions_created_at ON point_transactions(created_at)
+  `;
+
+  console.log("Gamification tables initialized");
+}
+
 // Re-export schema for convenience
 export * from "./schema";

@@ -10,6 +10,8 @@ import solverRouter from "./solver";
 import ratelimitsRouter from "./ratelimits";
 import examplesRouter from "./examples";
 import practicesRouter from "./practices";
+import playRouter from "./play";
+import gamificationRouter from "./gamification";
 
 const routes = new Hono();
 
@@ -24,5 +26,7 @@ routes.route("/solver", solverRouter);
 routes.route("/ratelimits", ratelimitsRouter);
 routes.route("/examples", examplesRouter);
 routes.route("/practices", practicesRouter);
+routes.route("/play", playRouter);
+routes.route("/gamification", gamificationRouter);
 
 export default routes;
