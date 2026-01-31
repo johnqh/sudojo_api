@@ -43,6 +43,25 @@ const DEFAULT_USER = "0".repeat(81); // 81 zeros - user hasn't entered anything
 const DEFAULT_PENCILMARKS = ",".repeat(80); // 81 empty elements (80 commas)
 const DEFAULT_AUTOPENCILMARKS = "false";
 
+// Helper to call solver with given params
+async function callSolver(
+  original: string,
+  user: string,
+  autopencilmarks: string,
+  pencilmarks: string,
+  techniques?: string
+): Promise<SolverResponse<SolveData>> {
+  const params = new URLSearchParams();
+  params.set("original", original);
+  params.set("user", user);
+  params.set("autopencilmarks", autopencilmarks);
+  params.set("pencilmarks", pencilmarks);
+  if (techniques) {
+    params.set("techniques", techniques);
+  }
+  return proxySolverRequest<SolveData>("solve", params.toString());
+}
+
 // Helper to handle solve request with hint access control
 async function handleSolveRequest(c: Context) {
   try {
@@ -53,17 +72,20 @@ async function handleSolveRequest(c: Context) {
     const pencilmarks = c.req.query("pencilmarks") ?? DEFAULT_PENCILMARKS;
     const techniques = c.req.query("techniques");
 
-    // Build query string with defaults applied
-    const params = new URLSearchParams();
-    params.set("original", original);
-    params.set("user", user);
-    params.set("autopencilmarks", autopencilmarks);
-    params.set("pencilmarks", pencilmarks);
-    if (techniques) {
-      params.set("techniques", techniques);
-    }
+    let result: SolverResponse<SolveData>;
 
-    const result = await proxySolverRequest<SolveData>("solve", params.toString());
+    if (techniques) {
+      // If technique is specified, try with technique first
+      result = await callSolver(original, user, autopencilmarks, pencilmarks, techniques);
+
+      // If technique-filtered solve fails, fallback to generic solve
+      if (!result.success || !result.data) {
+        result = await callSolver(original, user, autopencilmarks, pencilmarks);
+      }
+    } else {
+      // No technique specified, just call generic solve
+      result = await callSolver(original, user, autopencilmarks, pencilmarks);
+    }
 
     if (!result.success || !result.data) {
       const errorMsg = result.error
