@@ -172,8 +172,8 @@ async function handleSolveRequest(c: Context) {
       // If technique is specified, try with technique first
       result = await callSolver(original, user, autopencilmarks, pencilmarks, techniques);
 
-      // If technique-filtered solve fails, fallback to generic solve
-      if (!result.success || !result.data) {
+      // If technique-filtered solve fails, or solve contains an auto pencilmark hint, fallback to generic solve
+      if (!result.success || !result.data || result.data.hints?.level === 0) {
         result = await callSolver(original, user, autopencilmarks, pencilmarks);
       }
     } else {
