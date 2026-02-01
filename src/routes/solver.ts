@@ -4,24 +4,16 @@ import { getRequiredEnv } from "../lib/env-helper";
 import {
   successResponse,
   errorResponse,
-  addTechnique,
-  isBoardFilled,
-  getMergedBoardState,
-  hasInvalidPencilmarksStep,
-  hasPencilmarkContent,
   EMPTY_BOARD,
   EMPTY_PENCILMARKS,
   type SolveData,
   type ValidateData,
   type GenerateData,
   type HintAccessDeniedResponse,
-  type TechniqueId,
 } from "@sudobility/sudojo_types";
 import { db } from "../db";
 import { gameSessions, pointTransactions, userStats } from "../db/schema";
 
-// Maximum iterations for iterative solving (prevents infinite loops)
-const MAX_SOLVE_ITERATIONS = 200;
 import {
   hintAccessMiddleware,
   getRequiredEntitlement,
@@ -79,96 +71,6 @@ async function callSolver(
     params.set("techniques", techniques);
   }
   return proxySolverRequest<SolveData>("solve", params.toString());
-}
-
-// Validate a puzzle by iteratively solving it (matches frontend TechniqueExtractor)
-async function validateByIterativeSolve(
-  original: string,
-  autoPencilmarks: boolean
-): Promise<ValidateData | { error: string }> {
-  // Start with empty user input (all zeros) to match how frontend TechniqueExtractor works
-  let userInput = "0".repeat(81);
-  let pencilmarks = "";
-  let currentAutoPencilmarks = autoPencilmarks;
-  let techniquesBitfield = 0;
-  let maxLevel = 0;
-  let iterations = 0;
-
-  console.log(`[validate] Starting iterative solve for puzzle: ${original.substring(0, 20)}...`);
-
-  while (iterations < MAX_SOLVE_ITERATIONS) {
-    if (isBoardFilled(original, userInput)) break;
-
-    iterations++;
-
-    // Check if we have actual pencilmarks (not just empty commas)
-    const hasPencilmarks = pencilmarks && hasPencilmarkContent(pencilmarks);
-
-    try {
-      const response = await callSolver(
-        original,
-        userInput,
-        hasPencilmarks
-          ? String(currentAutoPencilmarks)
-          : String(autoPencilmarks),
-        hasPencilmarks ? pencilmarks : EMPTY_PENCILMARKS
-      );
-
-      if (!response.success || !response.data?.hints?.steps?.length) {
-        console.error(`[validate] Iteration ${iterations}: Solver failed to find next step`);
-        return { error: "Solver failed to find next step" };
-      }
-
-      if (hasInvalidPencilmarksStep(response.data.hints.steps)) {
-        console.error(`[validate] Iteration ${iterations}: Invalid pencilmarks detected`);
-        return { error: "Invalid pencilmarks detected" };
-      }
-
-      const hints = response.data.hints;
-      if (hints.technique > 0) {
-        techniquesBitfield = addTechnique(
-          techniquesBitfield,
-          hints.technique as TechniqueId
-        );
-      }
-      if (hints.level > 0) {
-        maxLevel = Math.max(maxLevel, hints.level);
-      }
-
-      const boardData = response.data.board;
-      if (boardData?.user) {
-        userInput = boardData.user;
-        pencilmarks = boardData.pencilmark?.numbers ?? "";
-        currentAutoPencilmarks =
-          boardData.pencilmark?.autopencil ?? autoPencilmarks;
-        if (isBoardFilled(original, userInput)) break;
-      } else {
-        console.error(`[validate] Iteration ${iterations}: Solver did not return board state`);
-        return { error: "Solver did not return board state" };
-      }
-    } catch (err) {
-      console.error(`[validate] Iteration ${iterations}: Error calling solver:`, err);
-      return { error: `Solver error at iteration ${iterations}: ${err instanceof Error ? err.message : String(err)}` };
-    }
-  }
-
-  if (!isBoardFilled(original, userInput)) {
-    console.error(`[validate] Failed to solve puzzle within ${iterations} iterations`);
-    return { error: "Failed to solve puzzle within iteration limit" };
-  }
-
-  console.log(`[validate] Completed in ${iterations} iterations, level=${maxLevel}, techniques=0x${techniquesBitfield.toString(16)}`);
-
-  const solution = getMergedBoardState(original, userInput);
-
-  return {
-    board: {
-      level: maxLevel,
-      techniques: techniquesBitfield,
-      original,
-      solution,
-    },
-  };
 }
 
 /**
@@ -350,28 +252,29 @@ async function handleSolveRequest(c: Context) {
 //   - techniques: comma-delimited list of technique numbers to filter (optional, e.g., "1,2,3")
 solverRouter.get("/solve", hintAccessMiddleware, handleSolveRequest);
 
-// GET /validate - Validate a puzzle by iteratively solving it
-// Matches frontend TechniqueExtractor behavior - iteratively calls /solve
-// to accumulate techniques and level, rather than calling solver /validate directly.
+// GET /validate - Validate a puzzle by calling solver's /validate directly
 // Query params:
 //   - original: 81-char puzzle string (required)
-//   - autopencilmarks: true/false (optional, defaults to false)
+//   - brutalForce: true/false (optional, defaults to true) - verify uniqueness with brute force
 solverRouter.get("/validate", async c => {
   try {
     const original = c.req.query("original") ?? "";
-    const autoPencilmarks = c.req.query("autopencilmarks") === "true";
 
     if (!original || original.length !== 81) {
       return c.json(errorResponse("Invalid puzzle: original must be 81 characters"), 400);
     }
 
-    const result = await validateByIterativeSolve(original, autoPencilmarks);
+    const queryString = new URL(c.req.url).search.slice(1);
+    const result = await proxySolverRequest<ValidateData>("validate", queryString);
 
-    if ("error" in result) {
-      return c.json(errorResponse(result.error), 400);
+    if (!result.success || !result.data) {
+      const errorMsg = result.error
+        ? `${result.error.code}: ${result.error.message}`
+        : "Validation failed";
+      return c.json(errorResponse(errorMsg), 400);
     }
 
-    return c.json(successResponse(result));
+    return c.json(successResponse(result.data));
   } catch (error) {
     console.error("Validate error:", error);
     return c.json(errorResponse("Solver service unavailable"), 503);
