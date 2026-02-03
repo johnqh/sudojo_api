@@ -87,6 +87,24 @@ boardsRouter.get("/counts", async c => {
   }));
 });
 
+// GET board counts by technique (public)
+// Returns count of boards for each technique bit (1-24)
+boardsRouter.get("/counts/by-technique", async c => {
+  const counts: Record<number, number> = {};
+
+  // Query count for each technique bit (1-24)
+  for (let technique = 1; technique <= 24; technique++) {
+    const bit = 1 << technique;
+    const [result] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(boards)
+      .where(sql`(${boards.techniques} & ${bit}) != 0`);
+    counts[technique] = result?.count ?? 0;
+  }
+
+  return c.json(successResponse(counts));
+});
+
 // GET random board (public)
 boardsRouter.get("/random", async c => {
   const levelParam = c.req.query("level");
