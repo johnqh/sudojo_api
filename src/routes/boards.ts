@@ -88,13 +88,16 @@ boardsRouter.get("/counts", async c => {
 });
 
 // GET board counts by technique (public)
-// Returns count of boards for each technique bit (1-24)
+// Returns count of boards for each technique bit (1-37)
+// Uses BigInt for bit calculation to support techniques >= 32
 boardsRouter.get("/counts/by-technique", async c => {
   const counts: Record<number, number> = {};
 
-  // Query count for each technique bit (1-24)
-  for (let technique = 1; technique <= 24; technique++) {
-    const bit = 1 << technique;
+  // Query count for each technique bit (1-37)
+  // TechniqueId enum goes from 1 (FULL_HOUSE) to 37 (MEDUSA_COLORING)
+  for (let technique = 1; technique <= 37; technique++) {
+    // Use BigInt to avoid 32-bit overflow for techniques >= 32
+    const bit = Number(BigInt(1) << BigInt(technique));
     const [result] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(boards)
