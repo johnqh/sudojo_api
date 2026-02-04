@@ -29,6 +29,7 @@ export const techniques = pgTable("techniques", {
   }),
   title: varchar("title", { length: 255 }).notNull(),
   path: varchar("path", { length: 255 }),
+  dependencies: text("dependencies"),
   text: text("text"),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
