@@ -10,6 +10,7 @@ import {
   date,
   jsonb,
   unique,
+  index,
 } from "drizzle-orm/pg-core";
 import { createRateLimitCountersTablePublic } from "@sudobility/ratelimit_service";
 
@@ -33,7 +34,9 @@ export const techniques = pgTable("techniques", {
   text: text("text"),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  pathIdx: index("techniques_path_idx").on(table.path),
+}));
 
 export const learning = pgTable("learning", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
