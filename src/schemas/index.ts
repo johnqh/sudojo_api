@@ -36,6 +36,10 @@ export const techniqueParamSchema = z.object({
   technique: z.coerce.number().int().min(1).max(37),
 });
 
+export const techniquePathParamSchema = z.object({
+  path: z.string().min(1).max(255),
+});
+
 // Learning schemas
 export const learningCreateSchema = z.object({
   technique: z.number().int().min(1).max(37),

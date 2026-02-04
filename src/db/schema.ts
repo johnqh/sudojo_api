@@ -28,6 +28,7 @@ export const techniques = pgTable("techniques", {
     onDelete: "cascade",
   }),
   title: varchar("title", { length: 255 }).notNull(),
+  path: varchar("path", { length: 255 }),
   text: text("text"),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),

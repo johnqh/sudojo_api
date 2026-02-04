@@ -6,6 +6,7 @@ import {
   techniqueCreateSchema,
   techniqueUpdateSchema,
   techniqueParamSchema,
+  techniquePathParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
@@ -34,6 +35,25 @@ techniquesRouter.get("/", async c => {
 
   return c.json(successResponse(rows));
 });
+
+// GET one technique by path (public)
+techniquesRouter.get(
+  "/path/:path",
+  zValidator("param", techniquePathParamSchema),
+  async c => {
+    const { path } = c.req.valid("param");
+    const rows = await db
+      .select()
+      .from(techniques)
+      .where(eq(techniques.path, path));
+
+    if (rows.length === 0) {
+      return c.json(errorResponse("Technique not found"), 404);
+    }
+
+    return c.json(successResponse(rows[0]));
+  }
+);
 
 // GET one technique by technique number (public)
 techniquesRouter.get(
