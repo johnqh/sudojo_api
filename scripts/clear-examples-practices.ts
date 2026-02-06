@@ -13,7 +13,7 @@ if (!DATABASE_URL) {
 }
 
 async function main() {
-  const client = postgres(DATABASE_URL);
+  const client = postgres(DATABASE_URL!);
 
   try {
     console.log("Clearing technique_practices...");

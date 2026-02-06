@@ -12,6 +12,7 @@ import examplesRouter from "./examples";
 import practicesRouter from "./practices";
 import playRouter from "./play";
 import gamificationRouter from "./gamification";
+import ocrRouter from "./ocr";
 
 const routes = new Hono();
 
@@ -28,5 +29,6 @@ routes.route("/examples", examplesRouter);
 routes.route("/practices", practicesRouter);
 routes.route("/play", playRouter);
 routes.route("/gamification", gamificationRouter);
+routes.route("/ocr", ocrRouter);
 
 export default routes;
