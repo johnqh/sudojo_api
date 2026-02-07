@@ -49,10 +49,24 @@ export async function initDatabase() {
       technique INTEGER PRIMARY KEY,
       level INTEGER REFERENCES levels(level) ON DELETE CASCADE,
       title VARCHAR(255) NOT NULL,
+      path VARCHAR(255),
+      dependencies TEXT,
       text TEXT,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     )
+  `;
+
+  // Migration: add columns that may be missing from older schema
+  await client`
+    ALTER TABLE techniques ADD COLUMN IF NOT EXISTS path VARCHAR(255)
+  `;
+  await client`
+    ALTER TABLE techniques ADD COLUMN IF NOT EXISTS dependencies TEXT
+  `;
+
+  await client`
+    CREATE INDEX IF NOT EXISTS techniques_path_idx ON techniques(path)
   `;
 
   await client`
