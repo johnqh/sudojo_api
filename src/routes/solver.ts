@@ -30,14 +30,22 @@ interface SolverResponse<T> {
   data: T | null;
 }
 
+// Timeout for solver requests (120 seconds)
+const SOLVER_TIMEOUT_MS = 120000;
+
 async function proxySolverRequest<T>(
   endpoint: string,
   queryString: string
 ): Promise<SolverResponse<T>> {
   const url = `${SOLVER_URL}/api/${endpoint}${queryString ? `?${queryString}` : ""}`;
 
+  // Create abort controller for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), SOLVER_TIMEOUT_MS);
+
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error(`[proxySolverRequest] Solver returned ${response.status} for ${endpoint}`);
@@ -46,6 +54,11 @@ async function proxySolverRequest<T>(
 
     return response.json() as Promise<SolverResponse<T>>;
   } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      console.error(`[proxySolverRequest] Solver request timed out after ${SOLVER_TIMEOUT_MS}ms for ${endpoint}`);
+      throw new Error(`Solver service timeout after ${SOLVER_TIMEOUT_MS / 1000}s`);
+    }
     console.error(`[proxySolverRequest] Failed to fetch ${endpoint}:`, err);
     throw err;
   }
