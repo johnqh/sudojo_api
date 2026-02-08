@@ -56,11 +56,11 @@ async function exportFixtures() {
     }
   }
 
-  // Write to shared fixtures location
-  const outputPath = new URL("../../test-fixtures/technique-practices.json", import.meta.url);
+  // Write to local fixtures location
+  const outputPath = new URL("../tests/fixtures/technique-practices.json", import.meta.url);
   await Bun.write(outputPath.pathname, JSON.stringify(fixtures, null, 2));
 
-  console.log(`\nExported ${fixtures.length} technique fixtures to test-fixtures/technique-practices.json`);
+  console.log(`\nExported ${fixtures.length} technique fixtures to tests/fixtures/technique-practices.json`);
 
   if (missing.length > 0) {
     console.log(`\nWARNING: ${missing.length} techniques have no practice data:`);
