@@ -34,7 +34,7 @@ interface ApiResponse<T> {
 
 // Load fixtures synchronously at module load time
 const fixturesPath = new URL(
-  "../../test-fixtures/technique-practices.json",
+  "./fixtures/technique-practices.json",
   import.meta.url
 );
 const fixtures: TechniqueFixture[] = JSON.parse(
