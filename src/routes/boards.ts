@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { db, boards } from "../db";
 import {
   boardCreateSchema,
@@ -111,31 +111,27 @@ boardsRouter.get("/counts/by-technique", async c => {
 // GET random board (public)
 boardsRouter.get("/random", async c => {
   const levelParam = c.req.query("level");
+  const symmetricalParam = c.req.query("symmetrical");
 
-  let rows;
+  const conditions = [];
+
   if (levelParam) {
     const level = parseInt(levelParam, 10);
     if (!isNaN(level)) {
-      rows = await db
-        .select()
-        .from(boards)
-        .where(eq(boards.level, level))
-        .orderBy(sql`RANDOM()`)
-        .limit(1);
-    } else {
-      rows = await db
-        .select()
-        .from(boards)
-        .orderBy(sql`RANDOM()`)
-        .limit(1);
+      conditions.push(eq(boards.level, level));
     }
-  } else {
-    rows = await db
-      .select()
-      .from(boards)
-      .orderBy(sql`RANDOM()`)
-      .limit(1);
   }
+
+  if (symmetricalParam === "true") {
+    conditions.push(eq(boards.symmetrical, true));
+  }
+
+  const rows = await db
+    .select()
+    .from(boards)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(sql`RANDOM()`)
+    .limit(1);
 
   if (rows.length === 0) {
     return c.json(errorResponse("No boards found"), 404);
