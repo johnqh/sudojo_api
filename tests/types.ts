@@ -1,7 +1,9 @@
 // Type helpers for tests
 export interface ApiResponse<T = unknown> {
+  success: boolean;
   data?: T;
   error?: string;
+  timestamp?: string;
 }
 
 export interface LevelData {

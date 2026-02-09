@@ -19,8 +19,9 @@ export const levelParamSchema = z.object({
 });
 
 // Technique schemas
+// Note: max technique ID is 60 (GROUPED_X_CYCLES)
 export const techniqueCreateSchema = z.object({
-  technique: z.number().int().min(1).max(37),
+  technique: z.number().int().min(1).max(60),
   level: z.number().int().min(1).max(12),
   title: z.string().min(1).max(255),
   text: z.string().nullish().default(""),
@@ -33,7 +34,7 @@ export const techniqueUpdateSchema = z.object({
 });
 
 export const techniqueParamSchema = z.object({
-  technique: z.coerce.number().int().min(1).max(37),
+  technique: z.coerce.number().int().min(1).max(60),
 });
 
 export const techniquePathParamSchema = z.object({
@@ -42,7 +43,7 @@ export const techniquePathParamSchema = z.object({
 
 // Learning schemas
 export const learningCreateSchema = z.object({
-  technique: z.number().int().min(1).max(37),
+  technique: z.number().int().min(1).max(60),
   index: z.number().int(),
   language_code: z.string().min(2).max(10).nullish().default("en"),
   text: z.string().nullish().default(""),
@@ -50,7 +51,7 @@ export const learningCreateSchema = z.object({
 });
 
 export const learningUpdateSchema = z.object({
-  technique: z.number().int().min(1).max(37).optional(),
+  technique: z.number().int().min(1).max(60).optional(),
   index: z.number().int().optional(),
   language_code: z.string().min(2).max(10).nullish(),
   text: z.string().nullish(),
@@ -58,12 +59,13 @@ export const learningUpdateSchema = z.object({
 });
 
 // Board schemas
+// Note: techniques uses coerce to handle both number and string (for values > 2^53)
 export const boardCreateSchema = z.object({
   level: z.number().int().min(1).max(12).nullish(),
   symmetrical: z.boolean().optional().default(false),
   board: z.string().length(81),
   solution: z.string().length(81),
-  techniques: z.number().int().optional().default(0),
+  techniques: z.coerce.number().optional().default(0),
 });
 
 export const boardUpdateSchema = z.object({
@@ -71,15 +73,16 @@ export const boardUpdateSchema = z.object({
   symmetrical: z.boolean().optional(),
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
-  techniques: z.number().int().optional(),
+  techniques: z.coerce.number().optional(),
 });
 
 // Daily schemas
+// Note: techniques uses coerce to handle both number and string (for values > 2^53)
 export const dailyCreateSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   board_uuid: z.string().uuid().nullish(),
   level: z.number().int().min(1).max(12).nullish(),
-  techniques: z.number().int().optional().default(0),
+  techniques: z.coerce.number().optional().default(0),
   board: z.string().length(81),
   solution: z.string().length(81),
 });
@@ -91,7 +94,7 @@ export const dailyUpdateSchema = z.object({
     .optional(),
   board_uuid: z.string().uuid().nullish(),
   level: z.number().int().min(1).max(12).nullish(),
-  techniques: z.number().int().optional(),
+  techniques: z.coerce.number().optional(),
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
 });
@@ -129,12 +132,13 @@ export const userIdParamSchema = z.object({
 
 // Technique example schemas
 // Note: primary_technique max value must match the highest TechniqueId in sudojo_types
+// Note: techniques_bitfield uses coerce to handle values > 2^53
 export const techniqueExampleCreateSchema = z.object({
   board: z.string().length(81),
   pencilmarks: z.string().nullish(),
   solution: z.string().length(81),
-  techniques_bitfield: z.number().int().min(1),
-  primary_technique: z.number().int().min(1).max(37),
+  techniques_bitfield: z.coerce.number().min(1),
+  primary_technique: z.number().int().min(1).max(60),
   hint_data: z.string().nullish(),
   source_board_uuid: z.string().uuid().nullish(),
 });
@@ -143,15 +147,15 @@ export const techniqueExampleUpdateSchema = z.object({
   board: z.string().length(81).optional(),
   pencilmarks: z.string().nullish(),
   solution: z.string().length(81).optional(),
-  techniques_bitfield: z.number().int().min(1).optional(),
-  primary_technique: z.number().int().min(1).max(37).optional(),
+  techniques_bitfield: z.coerce.number().min(1).optional(),
+  primary_technique: z.number().int().min(1).max(60).optional(),
   hint_data: z.string().nullish(),
   source_board_uuid: z.string().uuid().nullish(),
 });
 
 // Technique practice schemas
 export const techniquePracticeCreateSchema = z.object({
-  technique: z.number().int().min(1).max(37),
+  technique: z.number().int().min(1).max(60),
   board: z.string().length(81),
   pencilmarks: z.string().nullish(),
   solution: z.string().length(81),
@@ -164,11 +168,12 @@ export const techniquePracticeCreateSchema = z.object({
 // =============================================================================
 
 // Play session schemas
+// Note: techniques uses coerce to handle values > 2^53
 export const gameStartSchema = z.object({
   board: z.string().length(81),
   solution: z.string().length(81),
   level: z.number().int().min(1).max(12),
-  techniques: z.number().int().default(0),
+  techniques: z.coerce.number().default(0),
   puzzleType: z.enum(["daily", "level"]),
   puzzleId: z.string().max(100).optional(),
 });

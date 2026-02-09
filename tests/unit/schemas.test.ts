@@ -94,7 +94,7 @@ describe("Schema Validation", () => {
 
     it("should reject invalid technique", () => {
       const result = techniqueCreateSchema.safeParse({
-        technique: 38,
+        technique: 61,
         level: 1,
         title: "Naked Single",
       });
