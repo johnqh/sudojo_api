@@ -17,7 +17,7 @@ import { db, boards, techniqueExamples } from "../src/db";
 import { eq, sql, and, ne } from "drizzle-orm";
 import {
   TechniqueId,
-  TECHNIQUE_TITLE_TO_ID,
+  getTechniqueNameById,
   techniqueToBit,
   addTechnique,
   type SolveData,
@@ -82,7 +82,7 @@ async function initializeCounts(): Promise<void> {
   console.log("Current example counts:");
   for (const technique of TECHNIQUE_ORDER) {
     const count = exampleCounts.get(technique) || 0;
-    const name = Object.entries(TECHNIQUE_TITLE_TO_ID).find(([, id]) => id === technique)?.[0] || `Technique ${technique}`;
+    const name = getTechniqueNameById(technique);
     console.log(`  ${name}: ${count}/${TARGET_PER_TECHNIQUE}${count >= TARGET_PER_TECHNIQUE ? " ✓" : ""}`);
   }
   console.log();
@@ -237,7 +237,9 @@ async function processBoard(
     // Get current pencilmarks from solver response
     const currentPencilmarks = solveData.board.pencilmark?.numbers || null;
 
-    const techniqueId = TECHNIQUE_TITLE_TO_ID[step.title];
+    const techniqueId = solveData.hints.technique > 0
+      ? (solveData.hints.technique as TechniqueId)
+      : undefined;
     if (!techniqueId) {
       console.warn(`Unknown technique: ${step.title}`);
     } else {
@@ -259,7 +261,7 @@ async function processBoard(
         if (saved) {
           incrementCount(techniqueId);
           examplesAdded++;
-          const name = Object.entries(TECHNIQUE_TITLE_TO_ID).find(([, id]) => id === techniqueId)?.[0] || `Technique ${techniqueId}`;
+          const name = getTechniqueNameById(techniqueId);
           console.log(`    + ${name} (now ${getCount(techniqueId)}/${TARGET_PER_TECHNIQUE})`);
         }
       }
@@ -306,7 +308,7 @@ async function main() {
       continue; // Already filled from previous board processing
     }
 
-    const name = Object.entries(TECHNIQUE_TITLE_TO_ID).find(([, id]) => id === targetTechnique)?.[0] || `Technique ${targetTechnique}`;
+    const name = getTechniqueNameById(targetTechnique);
     console.log(`\nProcessing technique: ${name}`);
     console.log(`  Current count: ${getCount(targetTechnique)}/${TARGET_PER_TECHNIQUE}`);
 
@@ -357,7 +359,7 @@ async function main() {
   console.log("Final counts:");
   for (const technique of TECHNIQUE_ORDER) {
     const count = getCount(technique);
-    const name = Object.entries(TECHNIQUE_TITLE_TO_ID).find(([, id]) => id === technique)?.[0] || `Technique ${technique}`;
+    const name = getTechniqueNameById(technique);
     console.log(`  ${name}: ${count}/${TARGET_PER_TECHNIQUE}${count >= TARGET_PER_TECHNIQUE ? " ✓" : ""}`);
   }
 

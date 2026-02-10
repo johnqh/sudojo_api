@@ -12,6 +12,7 @@ import {
   successResponse,
   errorResponse,
   techniqueToBit,
+  ALL_TECHNIQUE_IDS,
   type TechniqueId,
 } from "@sudobility/sudojo_types";
 
@@ -27,7 +28,7 @@ examplesRouter.get("/", async c => {
   let rows;
   if (technique) {
     const techniqueId = parseInt(technique, 10);
-    if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 37) {
+    if (isNaN(techniqueId) || !ALL_TECHNIQUE_IDS.includes(techniqueId as TechniqueId)) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
     rows = await db
@@ -37,7 +38,7 @@ examplesRouter.get("/", async c => {
       .orderBy(desc(techniqueExamples.created_at));
   } else if (hasTechnique) {
     const techniqueId = parseInt(hasTechnique, 10);
-    if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 37) {
+    if (isNaN(techniqueId) || !ALL_TECHNIQUE_IDS.includes(techniqueId as TechniqueId)) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
     const bit = techniqueToBit(techniqueId as TechniqueId);
@@ -86,7 +87,7 @@ examplesRouter.get("/random", async c => {
 
   if (technique) {
     techniqueId = parseInt(technique, 10);
-    if (isNaN(techniqueId) || techniqueId < 1 || techniqueId > 37) {
+    if (isNaN(techniqueId) || !ALL_TECHNIQUE_IDS.includes(techniqueId as TechniqueId)) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
   }
