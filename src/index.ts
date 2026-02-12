@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { initDatabase } from "./db";
+import { initDatabase, initGamificationTables } from "./db";
 import routes from "./routes";
 import { successResponse } from "@sudobility/sudojo_types";
 import { getEnv } from "./lib/env-helper";
@@ -29,6 +29,7 @@ app.route("/api/v1", routes);
 const port = parseInt(getEnv("PORT", "3000")!);
 
 initDatabase()
+  .then(() => initGamificationTables())
   .then(() => {
     console.log(`Server running on http://localhost:${port}`);
   })
