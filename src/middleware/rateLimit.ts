@@ -1,3 +1,13 @@
+/**
+ * Rate-limit middleware for API abuse prevention.
+ *
+ * This enforces hourly/daily/monthly API call limits using @sudobility/ratelimit_service.
+ * It is separate from the access-control middleware in accessControl.ts, which gates
+ * access to premium content (daily puzzles, etc.) using a simple daily counter.
+ *
+ * Both check subscriptions via RevenueCat — subscribers bypass both systems.
+ * Admin users (identified by isSiteAdmin) bypass rate limiting entirely.
+ */
 import type { Context, Next } from "hono";
 import {
   createRateLimitMiddleware,
