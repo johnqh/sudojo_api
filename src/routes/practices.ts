@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Practice routes for Sudojo API
+ *
+ * Provides CRUD endpoints for technique practice puzzles.
+ * Each practice is a simplified board state designed for practicing
+ * a specific technique, derived from technique examples.
+ * Public endpoints: GET (counts, random by technique, get by UUID)
+ * Admin endpoints: POST, DELETE (require Firebase admin auth)
+ */
+
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { eq, sql } from "drizzle-orm";
@@ -12,8 +22,15 @@ import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const practicesRouter = new Hono();
 
-// GET practice counts for all techniques (public)
-// Returns list of techniques with their practice counts
+/**
+ * GET /api/v1/practices/counts
+ *
+ * Get practice counts for all techniques.
+ * Returns each technique with its associated practice puzzle count.
+ *
+ * @public No authentication required
+ * @returns 200 - Array of { technique, technique_title, count }
+ */
 practicesRouter.get("/counts", async c => {
   const rows = await db
     .select({
@@ -30,7 +47,16 @@ practicesRouter.get("/counts", async c => {
   return c.json(successResponse(rows));
 });
 
-// GET random practice for a technique (public)
+/**
+ * GET /api/v1/practices/technique/:technique/random
+ *
+ * Get a random practice puzzle for a specific technique.
+ *
+ * @public No authentication required
+ * @param technique - Integer 1-60
+ * @returns 200 - Single practice object
+ * @returns 404 - No practices found for this technique
+ */
 practicesRouter.get(
   "/technique/:technique/random",
   zValidator("param", techniqueParamSchema),
@@ -52,7 +78,16 @@ practicesRouter.get(
   }
 );
 
-// GET one practice by uuid (public)
+/**
+ * GET /api/v1/practices/:uuid
+ *
+ * Get a single practice puzzle by UUID.
+ *
+ * @public No authentication required
+ * @param uuid - Valid UUID string
+ * @returns 200 - Practice object
+ * @returns 404 - Practice not found
+ */
 practicesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
   const { uuid } = c.req.valid("param");
   const rows = await db
@@ -67,7 +102,17 @@ practicesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// POST create practice (admin only)
+/**
+ * POST /api/v1/practices
+ *
+ * Create a new practice puzzle. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @body techniquePracticeCreateSchema
+ * @returns 201 - Created practice object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ */
 practicesRouter.post(
   "/",
   adminMiddleware,
@@ -91,7 +136,19 @@ practicesRouter.post(
   }
 );
 
-// DELETE all practices (admin only, requires ?confirm=true)
+/**
+ * DELETE /api/v1/practices
+ *
+ * Delete ALL practice puzzles. Requires admin authentication and ?confirm=true.
+ * This is a destructive operation - use with caution.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @query confirm - Must be "true" to proceed
+ * @returns 200 - { deleted: number, message: string }
+ * @returns 400 - Missing ?confirm=true
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ */
 practicesRouter.delete("/", adminMiddleware, async c => {
   const confirm = c.req.query("confirm");
 
@@ -112,7 +169,18 @@ practicesRouter.delete("/", adminMiddleware, async c => {
   );
 });
 
-// DELETE practice by uuid (admin only)
+/**
+ * DELETE /api/v1/practices/:uuid
+ *
+ * Delete a single practice puzzle. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param uuid - Valid UUID string
+ * @returns 200 - Deleted practice object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Practice not found
+ */
 practicesRouter.delete(
   "/:uuid",
   adminMiddleware,

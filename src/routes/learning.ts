@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Learning routes for Sudojo API
+ *
+ * Provides CRUD endpoints for learning content entries.
+ * Each entry belongs to a technique and contains instructional text/images
+ * in a specific language, ordered by index for sequential display.
+ * Public endpoints: GET (list with technique/language filters, get by UUID)
+ * Admin endpoints: POST, PUT, DELETE (require Firebase admin auth)
+ */
+
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { eq, and, asc } from "drizzle-orm";
@@ -12,7 +22,16 @@ import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const learningRouter = new Hono();
 
-// GET all learning entries (public)
+/**
+ * GET /api/v1/learning
+ *
+ * List all learning entries with optional filtering.
+ *
+ * @public No authentication required
+ * @query technique - Optional integer to filter by technique number
+ * @query language_code - Optional string to filter by language (e.g., "en")
+ * @returns 200 - Array of learning entry objects ordered by technique and index
+ */
 learningRouter.get("/", async c => {
   const techniqueParam = c.req.query("technique");
   const languageCode = c.req.query("language_code");
@@ -67,7 +86,16 @@ learningRouter.get("/", async c => {
   return c.json(successResponse(rows));
 });
 
-// GET one learning entry by uuid (public)
+/**
+ * GET /api/v1/learning/:uuid
+ *
+ * Get a single learning entry by UUID.
+ *
+ * @public No authentication required
+ * @param uuid - Valid UUID string
+ * @returns 200 - Learning entry object
+ * @returns 404 - Learning entry not found
+ */
 learningRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
   const { uuid } = c.req.valid("param");
   const rows = await db.select().from(learning).where(eq(learning.uuid, uuid));
@@ -79,7 +107,17 @@ learningRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// POST create learning entry (requires admin auth)
+/**
+ * POST /api/v1/learning
+ *
+ * Create a new learning entry. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @body learningCreateSchema - { technique, index, language_code?, text?, image_url? }
+ * @returns 201 - Created learning entry object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ */
 learningRouter.post(
   "/",
   adminMiddleware,
@@ -103,7 +141,20 @@ learningRouter.post(
   }
 );
 
-// PUT update learning entry (requires admin auth)
+/**
+ * PUT /api/v1/learning/:uuid
+ *
+ * Update an existing learning entry. Requires admin authentication.
+ * Only provided fields are updated; omitted fields retain their current values.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param uuid - Valid UUID string
+ * @body learningUpdateSchema - { technique?, index?, language_code?, text?, image_url? }
+ * @returns 200 - Updated learning entry object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Learning entry not found
+ */
 learningRouter.put(
   "/:uuid",
   adminMiddleware,
@@ -140,7 +191,18 @@ learningRouter.put(
   }
 );
 
-// DELETE learning entry (requires admin auth)
+/**
+ * DELETE /api/v1/learning/:uuid
+ *
+ * Delete a learning entry. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param uuid - Valid UUID string
+ * @returns 200 - Deleted learning entry object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Learning entry not found
+ */
 learningRouter.delete(
   "/:uuid",
   adminMiddleware,

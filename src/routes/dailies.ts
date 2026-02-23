@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Daily puzzle routes for Sudojo API
+ *
+ * Provides CRUD endpoints for daily puzzles. Each daily has a unique date.
+ * When no daily exists for a requested date, a fallback puzzle is generated
+ * by selecting a random level 3-5 board and scrambling it.
+ * Public endpoints: GET (list, today, by date, by UUID)
+ * Admin endpoints: POST, PUT, DELETE (require Firebase admin auth)
+ */
+
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
@@ -88,14 +98,29 @@ async function getRandomFallbackPuzzle(date: string) {
   };
 }
 
-// GET all dailies (public)
+/**
+ * GET /api/v1/dailies
+ *
+ * List all daily puzzles, ordered by date descending.
+ *
+ * @public No authentication required
+ * @returns 200 - Array of daily puzzle objects
+ */
 dailiesRouter.get("/", async c => {
   const rows = await db.select().from(dailies).orderBy(desc(dailies.date));
   return c.json(successResponse(rows));
 });
 
-// GET today's daily (public)
-// Falls back to a random scrambled puzzle with level 3-5 if no daily exists
+/**
+ * GET /api/v1/dailies/today
+ *
+ * Get today's daily puzzle. Falls back to a random scrambled
+ * puzzle with level 3-5 if no daily has been created for today.
+ *
+ * @public No authentication required
+ * @returns 200 - Daily puzzle object (or fallback puzzle)
+ * @returns 404 - No puzzles available in database
+ */
 dailiesRouter.get("/today", async c => {
   const today = new Date().toISOString().split("T")[0] as string;
   const rows = await db.select().from(dailies).where(eq(dailies.date, today));
@@ -112,8 +137,17 @@ dailiesRouter.get("/today", async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// GET daily by date (public)
-// Falls back to a random scrambled puzzle with level 3-5 if no daily exists
+/**
+ * GET /api/v1/dailies/date/:date
+ *
+ * Get the daily puzzle for a specific date. Falls back to a random
+ * scrambled puzzle with level 3-5 if no daily exists for that date.
+ *
+ * @public No authentication required
+ * @param date - Date in YYYY-MM-DD format
+ * @returns 200 - Daily puzzle object (or fallback puzzle)
+ * @returns 404 - No puzzles available in database
+ */
 dailiesRouter.get(
   "/date/:date",
   zValidator("param", dateParamSchema),
@@ -134,7 +168,16 @@ dailiesRouter.get(
   }
 );
 
-// GET one daily by uuid (public)
+/**
+ * GET /api/v1/dailies/:uuid
+ *
+ * Get a single daily puzzle by UUID.
+ *
+ * @public No authentication required
+ * @param uuid - Valid UUID string
+ * @returns 200 - Daily puzzle object
+ * @returns 404 - Daily not found
+ */
 dailiesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
   const { uuid } = c.req.valid("param");
   const rows = await db.select().from(dailies).where(eq(dailies.uuid, uuid));
@@ -146,7 +189,17 @@ dailiesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// POST create daily (admin only)
+/**
+ * POST /api/v1/dailies
+ *
+ * Create a new daily puzzle for a specific date. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @body dailyCreateSchema - { date, board, solution, board_uuid?, level?, techniques? }
+ * @returns 201 - Created daily puzzle object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ */
 dailiesRouter.post(
   "/",
   adminMiddleware,
@@ -170,7 +223,20 @@ dailiesRouter.post(
   }
 );
 
-// PUT update daily (admin only)
+/**
+ * PUT /api/v1/dailies/:uuid
+ *
+ * Update an existing daily puzzle. Requires admin authentication.
+ * Only provided fields are updated; omitted fields retain their current values.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param uuid - Valid UUID string
+ * @body dailyUpdateSchema - { date?, board?, solution?, board_uuid?, level?, techniques? }
+ * @returns 200 - Updated daily puzzle object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Daily not found
+ */
 dailiesRouter.put(
   "/:uuid",
   adminMiddleware,
@@ -209,7 +275,18 @@ dailiesRouter.put(
   }
 );
 
-// DELETE daily (admin only)
+/**
+ * DELETE /api/v1/dailies/:uuid
+ *
+ * Delete a daily puzzle. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param uuid - Valid UUID string
+ * @returns 200 - Deleted daily puzzle object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Daily not found
+ */
 dailiesRouter.delete(
   "/:uuid",
   adminMiddleware,

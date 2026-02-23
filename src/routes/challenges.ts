@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Challenge routes for Sudojo API
+ *
+ * Provides CRUD endpoints for challenge puzzles.
+ * Challenges have a difficulty rating (1-10) and optional level association.
+ * Public endpoints: GET (list with level/difficulty filters, random, get by UUID)
+ * Admin endpoints: POST, PUT, DELETE (require Firebase admin auth)
+ */
+
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { eq, and, asc, desc, sql } from "drizzle-orm";
@@ -12,7 +21,16 @@ import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const challengesRouter = new Hono();
 
-// GET all challenges (public)
+/**
+ * GET /api/v1/challenges
+ *
+ * List all challenges with optional filtering by level and/or difficulty.
+ *
+ * @public No authentication required
+ * @query level - Filter by difficulty level (integer)
+ * @query difficulty - Filter by difficulty rating (integer 1-10)
+ * @returns 200 - Array of challenge objects ordered by difficulty asc, created_at desc
+ */
 challengesRouter.get("/", async c => {
   const levelParam = c.req.query("level");
   const difficulty = c.req.query("difficulty");
@@ -67,7 +85,17 @@ challengesRouter.get("/", async c => {
   return c.json(successResponse(rows));
 });
 
-// GET random challenge (public)
+/**
+ * GET /api/v1/challenges/random
+ *
+ * Get a random challenge with optional filtering.
+ *
+ * @public No authentication required
+ * @query level - Filter by difficulty level (integer)
+ * @query difficulty - Filter by difficulty rating (integer 1-10)
+ * @returns 200 - Single challenge object
+ * @returns 404 - No challenges found matching criteria
+ */
 challengesRouter.get("/random", async c => {
   const levelParam = c.req.query("level");
   const difficulty = c.req.query("difficulty");
@@ -132,7 +160,16 @@ challengesRouter.get("/random", async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// GET one challenge by uuid (public)
+/**
+ * GET /api/v1/challenges/:uuid
+ *
+ * Get a single challenge by UUID.
+ *
+ * @public No authentication required
+ * @param uuid - Valid UUID string
+ * @returns 200 - Challenge object
+ * @returns 404 - Challenge not found
+ */
 challengesRouter.get(
   "/:uuid",
   zValidator("param", uuidParamSchema),
@@ -151,7 +188,17 @@ challengesRouter.get(
   }
 );
 
-// POST create challenge (admin only)
+/**
+ * POST /api/v1/challenges
+ *
+ * Create a new challenge. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @body challengeCreateSchema - { board, solution, board_uuid?, level?, difficulty? }
+ * @returns 201 - Created challenge object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ */
 challengesRouter.post(
   "/",
   adminMiddleware,
@@ -174,7 +221,20 @@ challengesRouter.post(
   }
 );
 
-// PUT update challenge (admin only)
+/**
+ * PUT /api/v1/challenges/:uuid
+ *
+ * Update an existing challenge. Requires admin authentication.
+ * Only provided fields are updated; omitted fields retain their current values.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param uuid - Valid UUID string
+ * @body challengeUpdateSchema - { board?, solution?, board_uuid?, level?, difficulty? }
+ * @returns 200 - Updated challenge object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Challenge not found
+ */
 challengesRouter.put(
   "/:uuid",
   adminMiddleware,
@@ -212,7 +272,18 @@ challengesRouter.put(
   }
 );
 
-// DELETE challenge (admin only)
+/**
+ * DELETE /api/v1/challenges/:uuid
+ *
+ * Delete a challenge. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param uuid - Valid UUID string
+ * @returns 200 - Deleted challenge object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Challenge not found
+ */
 challengesRouter.delete(
   "/:uuid",
   adminMiddleware,

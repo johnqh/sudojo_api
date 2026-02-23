@@ -15,6 +15,23 @@ import { getSubscriptionHelper, getTestMode } from "./rateLimit";
 import { checkAndRecordAccess } from "../services/access";
 import { errorResponse } from "@sudobility/sudojo_types";
 
+/**
+ * Create an access control middleware for a specific endpoint.
+ *
+ * The middleware checks (in order):
+ * 1. Firebase authentication (returns 401 if missing/invalid)
+ * 2. Admin bypass (admins have unlimited access)
+ * 3. Subscription bypass (subscribers via RevenueCat have unlimited access)
+ * 4. Daily access limit check (returns 402 if limit reached)
+ *
+ * Sets `X-Daily-Remaining` response header with remaining accesses.
+ *
+ * Context variables set:
+ * - firebaseUser: Decoded Firebase token
+ *
+ * @param endpoint - The endpoint identifier for tracking (e.g., "boards", "dailies")
+ * @returns Hono middleware function
+ */
 export function createAccessControlMiddleware(endpoint: string) {
   return async (c: Context, next: Next) => {
     const authHeader = c.req.header("Authorization");

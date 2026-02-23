@@ -1,3 +1,11 @@
+/**
+ * @fileoverview Level routes for Sudojo API
+ *
+ * Provides CRUD endpoints for difficulty levels (1-12).
+ * Public endpoints: GET (list, get by level number)
+ * Admin endpoints: POST, PUT, DELETE (require Firebase admin auth)
+ */
+
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { eq, asc } from "drizzle-orm";
@@ -12,13 +20,29 @@ import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const levelsRouter = new Hono();
 
-// GET all levels (public)
+/**
+ * GET /api/v1/levels
+ *
+ * List all difficulty levels, ordered ascending by level number.
+ *
+ * @public No authentication required
+ * @returns 200 - Array of level objects
+ */
 levelsRouter.get("/", async c => {
   const rows = await db.select().from(levels).orderBy(asc(levels.level));
   return c.json(successResponse(rows));
 });
 
-// GET one level by level number (public)
+/**
+ * GET /api/v1/levels/:level
+ *
+ * Get a single level by its level number.
+ *
+ * @public No authentication required
+ * @param level - Integer 1-12, validated by levelParamSchema
+ * @returns 200 - Level object
+ * @returns 404 - Level not found
+ */
 levelsRouter.get("/:level", zValidator("param", levelParamSchema), async c => {
   const { level } = c.req.valid("param");
   const rows = await db.select().from(levels).where(eq(levels.level, level));
@@ -30,7 +54,17 @@ levelsRouter.get("/:level", zValidator("param", levelParamSchema), async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// POST create level (requires admin auth)
+/**
+ * POST /api/v1/levels
+ *
+ * Create a new difficulty level. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @body levelCreateSchema - { level, title, text?, requires_subscription? }
+ * @returns 201 - Created level object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ */
 levelsRouter.post(
   "/",
   adminMiddleware,
@@ -52,7 +86,20 @@ levelsRouter.post(
   }
 );
 
-// PUT update level (requires admin auth)
+/**
+ * PUT /api/v1/levels/:level
+ *
+ * Update an existing difficulty level. Requires admin authentication.
+ * Only provided fields are updated; omitted fields retain their current values.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param level - Integer 1-12
+ * @body levelUpdateSchema - { title?, text?, requires_subscription? }
+ * @returns 200 - Updated level object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Level not found
+ */
 levelsRouter.put(
   "/:level",
   adminMiddleware,
@@ -88,7 +135,19 @@ levelsRouter.put(
   }
 );
 
-// DELETE level (requires admin auth)
+/**
+ * DELETE /api/v1/levels/:level
+ *
+ * Delete a difficulty level. Requires admin authentication.
+ * Cascades to techniques referencing this level.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param level - Integer 1-12
+ * @returns 200 - Deleted level object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Level not found
+ */
 levelsRouter.delete(
   "/:level",
   adminMiddleware,

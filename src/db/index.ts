@@ -1,3 +1,21 @@
+/**
+ * @fileoverview Database initialization and connection management
+ *
+ * Uses PostgreSQL via postgres.js driver with Drizzle ORM.
+ * Database initialization uses raw SQL CREATE TABLE IF NOT EXISTS statements
+ * for idempotent table creation and ALTER TABLE for migrations.
+ *
+ * Schema versioning strategy:
+ * - Tables are created with CREATE TABLE IF NOT EXISTS (idempotent)
+ * - Column additions use ALTER TABLE ADD COLUMN IF NOT EXISTS (idempotent)
+ * - No rollback mechanism - migrations are forward-only
+ * - Table creation order respects foreign key dependencies:
+ *   levels -> techniques -> learning, boards -> dailies/challenges,
+ *   badge_definitions -> user_badges, technique_examples -> technique_practices
+ *
+ * @see schema.ts for Drizzle ORM schema definitions (kept in sync with raw SQL)
+ */
+
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
@@ -8,6 +26,10 @@ import { initRateLimitTable } from "@sudobility/ratelimit_service";
 let _client: ReturnType<typeof postgres> | null = null;
 let _db: PostgresJsDatabase<typeof schema> | null = null;
 
+/**
+ * Get the raw postgres.js client (lazily initialized).
+ * Connection string is read from DATABASE_URL environment variable.
+ */
 function getClient() {
   if (!_client) {
     const connectionString = getRequiredEnv("DATABASE_URL");
@@ -16,6 +38,10 @@ function getClient() {
   return _client;
 }
 
+/**
+ * Get the Drizzle ORM database instance (lazily initialized).
+ * Prefer this over the `db` proxy for new code.
+ */
 export function getDb() {
   if (!_db) {
     _db = drizzle(getClient(), { schema });
@@ -23,13 +49,37 @@ export function getDb() {
   return _db;
 }
 
-// For backwards compatibility - but prefer getDb() for test isolation
+/**
+ * Proxy-based database accessor for backwards compatibility.
+ * Delegates all property access to the lazily-initialized Drizzle instance.
+ * Prefer `getDb()` for explicit initialization control in tests.
+ */
 export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
   get(_, prop) {
     return (getDb() as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
 
+/**
+ * Initialize core database tables using raw SQL.
+ *
+ * Creates tables in dependency order:
+ * 1. levels (no dependencies)
+ * 2. techniques (references levels)
+ * 3. learning (references techniques)
+ * 4. boards (references levels)
+ * 5. dailies (references boards, levels)
+ * 6. challenges (references boards, levels)
+ * 7. access_logs (no dependencies)
+ * 8. technique_examples (references boards)
+ * 9. technique_practices (references techniques, technique_examples)
+ * 10. rate_limit_counters (via ratelimit_service)
+ *
+ * All statements are idempotent (IF NOT EXISTS).
+ * Column migrations use ALTER TABLE ADD COLUMN IF NOT EXISTS.
+ *
+ * @throws Error if DATABASE_URL is not set or database is unreachable
+ */
 export async function initDatabase() {
   const client = getClient();
   // Create tables if they don't exist
@@ -165,6 +215,10 @@ export async function initDatabase() {
   console.log("Database tables initialized");
 }
 
+/**
+ * Close the database connection and reset cached instances.
+ * Should be called during graceful shutdown or after test runs.
+ */
 export async function closeDatabase() {
   if (_client) {
     await _client.end();
@@ -174,7 +228,19 @@ export async function closeDatabase() {
 }
 
 /**
- * Initialize gamification tables
+ * Initialize gamification-related database tables.
+ *
+ * Creates tables in dependency order:
+ * 1. user_stats (user points, level, games completed)
+ * 2. badge_definitions (badge types and requirements)
+ * 3. user_badges (earned badges, references badge_definitions)
+ * 4. game_sessions (active game state, one per user)
+ * 5. point_transactions (audit trail for all point changes)
+ *
+ * Also creates performance indexes on user_badges, point_transactions.
+ * All statements are idempotent (IF NOT EXISTS).
+ *
+ * @throws Error if database connection fails
  */
 export async function initGamificationTables() {
   const client = getClient();

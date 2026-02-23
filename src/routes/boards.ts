@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Board routes for Sudojo API
+ *
+ * Provides CRUD endpoints for Sudoku puzzle boards.
+ * Each board has an 81-char board string, solution, optional level, and techniques bitfield.
+ * Public endpoints: GET (list with filters, counts, random, get by UUID)
+ * Admin endpoints: POST, PUT, DELETE (require Firebase admin auth)
+ */
+
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq, desc, sql } from "drizzle-orm";
@@ -12,7 +21,19 @@ import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const boardsRouter = new Hono();
 
-// GET all boards (public)
+/**
+ * GET /api/v1/boards
+ *
+ * List boards with optional filtering and pagination.
+ *
+ * @public No authentication required
+ * @query level - Filter by difficulty level (integer)
+ * @query technique_bit - Filter boards containing this technique bit (integer > 0)
+ * @query techniques - Filter by exact techniques value (0 includes NULL)
+ * @query limit - Maximum number of results (positive integer)
+ * @query offset - Number of results to skip (non-negative integer)
+ * @returns 200 - Array of board objects ordered by created_at desc
+ */
 boardsRouter.get("/", async c => {
   const levelParam = c.req.query("level");
   const techniqueBit = c.req.query("technique_bit");
@@ -70,7 +91,14 @@ boardsRouter.get("/", async c => {
   return c.json(successResponse(rows));
 });
 
-// GET board counts (public)
+/**
+ * GET /api/v1/boards/counts
+ *
+ * Get total board count and count of boards without techniques.
+ *
+ * @public No authentication required
+ * @returns 200 - { total, withoutTechniques }
+ */
 boardsRouter.get("/counts", async c => {
   const [totalResult] = await db
     .select({ count: sql<number>`count(*)::int` })
@@ -87,9 +115,15 @@ boardsRouter.get("/counts", async c => {
   }));
 });
 
-// GET board counts by technique (public)
-// Returns count of boards for each technique bit (1-37)
-// Uses BigInt for bit calculation to support techniques >= 32
+/**
+ * GET /api/v1/boards/counts/by-technique
+ *
+ * Get board counts for each technique bit (1-37).
+ * Uses BigInt for bit calculation to support technique IDs >= 32.
+ *
+ * @public No authentication required
+ * @returns 200 - Record<number, number> mapping technique ID to count
+ */
 boardsRouter.get("/counts/by-technique", async c => {
   const counts: Record<number, number> = {};
 
@@ -108,7 +142,17 @@ boardsRouter.get("/counts/by-technique", async c => {
   return c.json(successResponse(counts));
 });
 
-// GET random board (public)
+/**
+ * GET /api/v1/boards/random
+ *
+ * Get a random board with optional filtering.
+ *
+ * @public No authentication required
+ * @query level - Filter by difficulty level (integer)
+ * @query symmetrical - Filter for symmetrical boards ("true")
+ * @returns 200 - Single board object
+ * @returns 404 - No boards found matching criteria
+ */
 boardsRouter.get("/random", async c => {
   const levelParam = c.req.query("level");
   const symmetricalParam = c.req.query("symmetrical");
@@ -140,7 +184,16 @@ boardsRouter.get("/random", async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// GET one board by uuid (public)
+/**
+ * GET /api/v1/boards/:uuid
+ *
+ * Get a single board by UUID.
+ *
+ * @public No authentication required
+ * @param uuid - Valid UUID string
+ * @returns 200 - Board object
+ * @returns 404 - Board not found
+ */
 boardsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
   const { uuid } = c.req.valid("param");
   const rows = await db.select().from(boards).where(eq(boards.uuid, uuid));
@@ -152,7 +205,17 @@ boardsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
   return c.json(successResponse(rows[0]));
 });
 
-// POST create board (admin only)
+/**
+ * POST /api/v1/boards
+ *
+ * Create a new board. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @body boardCreateSchema - { board, solution, level?, symmetrical?, techniques? }
+ * @returns 201 - Created board object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ */
 boardsRouter.post(
   "/",
   adminMiddleware,
@@ -175,7 +238,20 @@ boardsRouter.post(
   }
 );
 
-// PUT update board (admin only)
+/**
+ * PUT /api/v1/boards/:uuid
+ *
+ * Update an existing board. Requires admin authentication.
+ * Only provided fields are updated; omitted fields retain their current values.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param uuid - Valid UUID string
+ * @body boardUpdateSchema - { board?, solution?, level?, symmetrical?, techniques? }
+ * @returns 200 - Updated board object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Board not found
+ */
 boardsRouter.put(
   "/:uuid",
   adminMiddleware,
@@ -212,7 +288,19 @@ boardsRouter.put(
   }
 );
 
-// DELETE board (admin only)
+/**
+ * DELETE /api/v1/boards/:uuid
+ *
+ * Delete a board. Requires admin authentication.
+ * Referencing dailies/challenges will have their board_uuid set to NULL.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param uuid - Valid UUID string
+ * @returns 200 - Deleted board object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Board not found
+ */
 boardsRouter.delete(
   "/:uuid",
   adminMiddleware,

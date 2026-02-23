@@ -1,3 +1,19 @@
+/**
+ * @fileoverview Solver proxy routes for Sudojo API
+ *
+ * Proxies requests to the external solver service for puzzle solving,
+ * validation, and generation. Implements hint access control based on
+ * subscription tier and tracks hint usage for gamification.
+ *
+ * Access tiers for /solve:
+ * - red_belt or site admin: all hint levels
+ * - blue_belt: hint levels 1-5
+ * - free/anonymous: hint levels 1-3
+ *
+ * Public endpoints: GET /validate, GET /generate
+ * Access-controlled: GET /solve (hint access middleware, no hard auth required)
+ */
+
 import { Hono, type Context } from "hono";
 import { eq } from "drizzle-orm";
 import { getRequiredEnv } from "../lib/env-helper";
@@ -252,23 +268,39 @@ async function handleSolveRequest(c: Context) {
   }
 }
 
-// GET /solve - Get hints for solving a puzzle
-// Access controlled by subscription tier:
-//   - red_belt or site admin: all levels
-//   - blue_belt: levels 1-5
-//   - free/anonymous: levels 1-3
-// Query params:
-//   - original: 81 digits (required)
-//   - user: 81 digits, 0=empty (optional, defaults to 81 zeros)
-//   - autopencilmarks: true/false (optional, defaults to false)
-//   - pencilmarks: comma-separated 81 elements (optional, defaults to empty)
-//   - techniques: comma-delimited list of technique numbers to filter (optional, e.g., "1,2,3")
+/**
+ * GET /api/v1/solver/solve
+ *
+ * Get hints for solving a puzzle. Access controlled by subscription tier.
+ * If an authenticated user has an active game session, hint usage is tracked
+ * for gamification (awards 2 x technique_level points).
+ *
+ * @auth Optional - anonymous users get free tier access (levels 1-3)
+ * @query original - 81-digit puzzle string (required)
+ * @query user - 81-digit user input string, 0=empty (defaults to 81 zeros)
+ * @query autopencilmarks - "true"/"false" (defaults to "false")
+ * @query pencilmarks - Comma-separated 81 elements (defaults to empty)
+ * @query techniques - Comma-delimited technique numbers to filter (e.g., "1,2,3")
+ * @returns 200 - Solve data with hints
+ * @returns 400 - Solver error (invalid puzzle)
+ * @returns 402 - Hint access denied (requires higher subscription tier)
+ * @returns 503 - Solver service unavailable
+ */
 solverRouter.get("/solve", hintAccessMiddleware, handleSolveRequest);
 
-// GET /validate - Validate a puzzle by calling solver's /validate directly
-// Query params:
-//   - original: 81-char puzzle string (required)
-//   - brutalForce: true/false (optional, defaults to true) - verify uniqueness with brute force
+/**
+ * GET /api/v1/solver/validate
+ *
+ * Validate a Sudoku puzzle by proxying to the solver's /validate endpoint.
+ * Checks puzzle validity, uniqueness, and determines difficulty level.
+ *
+ * @public No authentication required
+ * @query original - 81-char puzzle string (required)
+ * @query brutalForce - "true"/"false" - verify uniqueness via brute force (defaults to "true")
+ * @returns 200 - Validation data (level, techniques, solution)
+ * @returns 400 - Invalid puzzle or validation failed
+ * @returns 503 - Solver service unavailable
+ */
 solverRouter.get("/validate", async c => {
   try {
     const original = c.req.query("original") ?? "";
@@ -294,8 +326,17 @@ solverRouter.get("/validate", async c => {
   }
 });
 
-// GET /generate - Generate a random puzzle (public)
-// Query params: symmetrical
+/**
+ * GET /api/v1/solver/generate
+ *
+ * Generate a random Sudoku puzzle by proxying to the solver's /generate endpoint.
+ *
+ * @public No authentication required
+ * @query symmetrical - "true"/"false" - generate symmetrical puzzle
+ * @returns 200 - Generated puzzle data (board, solution, level, techniques)
+ * @returns 500 - Generation failed
+ * @returns 503 - Solver service unavailable
+ */
 solverRouter.get("/generate", async c => {
   try {
     const queryString = new URL(c.req.url).search.slice(1);

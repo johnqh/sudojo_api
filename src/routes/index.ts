@@ -1,3 +1,26 @@
+/**
+ * @fileoverview API route registry
+ *
+ * Registers all route modules under /api/v1/. All routes are prefixed
+ * with the module name (e.g., /api/v1/levels, /api/v1/techniques).
+ *
+ * Route modules:
+ * - levels: Difficulty level CRUD (public read, admin write)
+ * - techniques: Solving technique CRUD (public read, admin write)
+ * - learning: Learning content CRUD (public read, admin write)
+ * - boards: Puzzle board CRUD (public read, admin write)
+ * - dailies: Daily puzzle CRUD with fallback generation (public read, admin write)
+ * - challenges: Challenge puzzle CRUD (public read, admin write)
+ * - users: User info and subscriptions (Firebase auth required)
+ * - solver: Puzzle solving, validation, generation proxy (hint access control)
+ * - ratelimits: Rate limit config and history (Firebase auth required)
+ * - examples: Technique example CRUD (public read, admin write)
+ * - practices: Practice puzzle CRUD (public read, admin write)
+ * - play: Game session management (Firebase auth required)
+ * - gamification: Stats, badges, point history (public badges, auth for stats)
+ * - ocr: Sudoku image extraction (public)
+ */
+
 import { Hono } from "hono";
 import levelsRouter from "./levels";
 import techniquesRouter from "./techniques";

@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Technique routes for Sudojo API
+ *
+ * Provides CRUD endpoints for Sudoku solving techniques (1-60).
+ * Each technique belongs to a difficulty level and can be looked up by path slug.
+ * Public endpoints: GET (list with optional level filter, get by technique number or path)
+ * Admin endpoints: POST, PUT, DELETE (require Firebase admin auth)
+ */
+
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { eq, asc } from "drizzle-orm";
@@ -13,7 +22,15 @@ import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 
 const techniquesRouter = new Hono();
 
-// GET all techniques (public)
+/**
+ * GET /api/v1/techniques
+ *
+ * List all techniques, optionally filtered by level.
+ *
+ * @public No authentication required
+ * @query level - Optional integer to filter techniques by difficulty level
+ * @returns 200 - Array of technique objects ordered by title
+ */
 techniquesRouter.get("/", async c => {
   const levelParam = c.req.query("level");
 
@@ -36,7 +53,16 @@ techniquesRouter.get("/", async c => {
   return c.json(successResponse(rows));
 });
 
-// GET one technique by path (public)
+/**
+ * GET /api/v1/techniques/path/:path
+ *
+ * Get a single technique by its URL-friendly path slug.
+ *
+ * @public No authentication required
+ * @param path - URL path slug (e.g., "naked-single")
+ * @returns 200 - Technique object
+ * @returns 404 - Technique not found
+ */
 techniquesRouter.get(
   "/path/:path",
   zValidator("param", techniquePathParamSchema),
@@ -55,7 +81,16 @@ techniquesRouter.get(
   }
 );
 
-// GET one technique by technique number (public)
+/**
+ * GET /api/v1/techniques/:technique
+ *
+ * Get a single technique by its technique number.
+ *
+ * @public No authentication required
+ * @param technique - Integer 1-60
+ * @returns 200 - Technique object
+ * @returns 404 - Technique not found
+ */
 techniquesRouter.get(
   "/:technique",
   zValidator("param", techniqueParamSchema),
@@ -74,7 +109,17 @@ techniquesRouter.get(
   }
 );
 
-// POST create technique (requires admin auth)
+/**
+ * POST /api/v1/techniques
+ *
+ * Create a new solving technique. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @body techniqueCreateSchema - { technique, level, title, text? }
+ * @returns 201 - Created technique object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ */
 techniquesRouter.post(
   "/",
   adminMiddleware,
@@ -96,7 +141,20 @@ techniquesRouter.post(
   }
 );
 
-// PUT update technique (requires admin auth)
+/**
+ * PUT /api/v1/techniques/:technique
+ *
+ * Update an existing technique. Requires admin authentication.
+ * Only provided fields are updated; omitted fields retain their current values.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param technique - Integer 1-60
+ * @body techniqueUpdateSchema - { level?, title?, text? }
+ * @returns 200 - Updated technique object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Technique not found
+ */
 techniquesRouter.put(
   "/:technique",
   adminMiddleware,
@@ -130,7 +188,19 @@ techniquesRouter.put(
   }
 );
 
-// DELETE technique (requires admin auth)
+/**
+ * DELETE /api/v1/techniques/:technique
+ *
+ * Delete a technique. Requires admin authentication.
+ * Cascades to learning entries referencing this technique.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @param technique - Integer 1-60
+ * @returns 200 - Deleted technique object
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ * @returns 404 - Technique not found
+ */
 techniquesRouter.delete(
   "/:technique",
   adminMiddleware,
