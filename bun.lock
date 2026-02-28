@@ -1,17 +1,18 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "sudojo_api",
       "dependencies": {
         "@hono/zod-validator": "^0.7.5",
         "@napi-rs/canvas": "^0.1.68",
-        "@sudobility/auth_service": "^1.1.9",
-        "@sudobility/ratelimit_service": "^1.0.26",
-        "@sudobility/subscription_service": "^1.0.7",
-        "@sudobility/sudojo_ocr": "^1.1.1",
-        "@sudobility/sudojo_types": "^1.2.35",
-        "@sudobility/types": "^1.9.54",
+        "@sudobility/auth_service": "^1.1.10",
+        "@sudobility/ratelimit_service": "^1.0.27",
+        "@sudobility/subscription_service": "^1.0.8",
+        "@sudobility/sudojo_ocr": "^1.1.2",
+        "@sudobility/sudojo_types": "^1.2.36",
+        "@sudobility/types": "^1.9.55",
         "drizzle-orm": "^0.45.0",
         "firebase-admin": "^13.6.0",
         "hono": "^4.10.7",
@@ -258,17 +259,17 @@
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
-    "@sudobility/auth_service": ["@sudobility/auth_service@1.1.9", "", { "peerDependencies": { "@sudobility/types": "^1.9.54", "firebase-admin": "^13.0.0" } }, "sha512-sYGBInajjRPHzEVOnrcmCob/X64rVCuS7bVpj7MzYRqcG0LuQis8k0Pb1lrbwYJ9jDPgG8xwToCSM7Q3rMipxw=="],
+    "@sudobility/auth_service": ["@sudobility/auth_service@1.1.10", "", { "peerDependencies": { "@sudobility/types": "^1.9.55", "firebase-admin": "^13.0.0" } }, "sha512-LUONbozetwVoBgrRC9mYWwvfzTPXdJH6Wb/GKZ8pbBVzFlEZxlY1Xby68kHZSTUPQT2c63nQ7XSjyNIIihXjjQ=="],
 
-    "@sudobility/ratelimit_service": ["@sudobility/ratelimit_service@1.0.26", "", { "peerDependencies": { "@sudobility/types": "^1.9.54", "drizzle-orm": "^0.45.0", "hono": "^4.0.0", "postgres": "^3.4.0" } }, "sha512-s8JHZ8EHEXH+hW2P6OBsRwW67QyZ9MeeHBhwl0WoWcdUnMjnQhHqWtEOl8OEP6kUgdMWxGySuQbJrz4suWHGXw=="],
+    "@sudobility/ratelimit_service": ["@sudobility/ratelimit_service@1.0.27", "", { "peerDependencies": { "@sudobility/types": "^1.9.55", "drizzle-orm": "^0.45.0", "hono": "^4.0.0", "postgres": "^3.4.0" } }, "sha512-Z6VUESGsIa99JN7TnM0qiFhIy9xIlzrIB1ypysb44bBnrKqgvzbPeS3hpE+XPsn/2pDOXhsJ2v/GEkKy+wQZZA=="],
 
-    "@sudobility/subscription_service": ["@sudobility/subscription_service@1.0.7", "", { "peerDependencies": { "@sudobility/types": "^1.9.54" } }, "sha512-u80tUOnC731DFG6w9rJRr9MQLlwuw+Lz8ZfdF1nhcER1GPUOSVxoGaALtVuHsJCMSEzDY0ZDm9kHrj7LYxUgUA=="],
+    "@sudobility/subscription_service": ["@sudobility/subscription_service@1.0.8", "", { "peerDependencies": { "@sudobility/types": "^1.9.55" } }, "sha512-w+6jZyCWLflo7rry9AnZIj3H1y5vn6hyfBrNw0WdtxaU5jsP2DZvi/xquSdfQg6+x8cFjYE38W5Nd25AGoQgaQ=="],
 
-    "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.1", "", { "peerDependencies": { "tesseract.js": "^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-1WrmK8nCn5WpR0/mqlGWU8PbtFrLFSyxce+EoicnBT3s9rIdoeayEoJWRdo4eYlc4RZ4F1rvri9bB9uf/ovO3A=="],
+    "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.2", "", { "peerDependencies": { "tesseract.js": "^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-+K++APRbSwEaT+YxNylKxIm3aKuK1qqnYu74jPFAEk46iTF8067licdQaY5qDHcuazf52j+Le7tszti9XVLueg=="],
 
-    "@sudobility/sudojo_types": ["@sudobility/sudojo_types@1.2.35", "", { "peerDependencies": { "@sudobility/types": "^1.9.54" } }, "sha512-f2NBLjanzndyZrEr2NwBjXBIRB2n7MQfb9eAJybQzWWR4KSIZBO2YUMQ2xtr8om7DAU4dItTpG0gD0yWhyJymA=="],
+    "@sudobility/sudojo_types": ["@sudobility/sudojo_types@1.2.36", "", { "peerDependencies": { "@sudobility/types": "^1.9.55" } }, "sha512-LiVcFv6y/u/l6ll+PNwNIlvMbLfsLF4hNHHx77U77O7hNj8Ig9asMrzoo1e67ZFbF/MJIoLloBJpqumU8739MQ=="],
 
-    "@sudobility/types": ["@sudobility/types@1.9.54", "", {}, "sha512-A2Kxr639D8NqPbudeARhp1cbKlE6YBf7NKaU8Gh1XwajgV9sqTBMEB+IfFpifU/tKg1JFEj/t5qmPPK4VzdZaw=="],
+    "@sudobility/types": ["@sudobility/types@1.9.55", "", {}, "sha512-cl8RwuaKSa6hBTuH7ipTXtJH1dLQCtLJsxEnwMmKvpCN+RINP6nR8VDUTmHONLP1IQ1pSPBvUmR0Ip+J63cL5g=="],
 
     "@tootallnate/once": ["@tootallnate/once@2.0.0", "", {}, "sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A=="],
 
