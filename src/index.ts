@@ -13,6 +13,7 @@ import { initDatabase, initGamificationTables, closeDatabase } from "./db";
 import routes from "./routes";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 import { getEnv } from "./lib/env-helper";
+import { encryptSolutionsMiddleware } from "./middleware/encryptSolutions";
 
 const app = new Hono();
 
@@ -29,6 +30,9 @@ const healthResponse = {
 
 app.get("/", c => c.json(successResponse(healthResponse)));
 app.get("/health", c => c.json(successResponse(healthResponse)));
+
+// Encrypt solution fields in GET responses
+app.use("/api/v1/*", encryptSolutionsMiddleware);
 
 // API routes
 app.route("/api/v1", routes);

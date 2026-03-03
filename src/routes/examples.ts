@@ -296,37 +296,4 @@ examplesRouter.delete(
   }
 );
 
-/**
- * DELETE /api/v1/examples
- *
- * Delete ALL technique examples. Requires admin authentication and ?confirm=true.
- * This is a destructive operation - use with caution.
- *
- * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
- * @query confirm - Must be "true" to proceed
- * @returns 200 - { deleted: number, message: string }
- * @returns 400 - Missing ?confirm=true
- * @returns 401 - Missing or invalid auth token
- * @returns 403 - Not an admin user
- */
-examplesRouter.delete("/", adminMiddleware, async c => {
-  const confirm = c.req.query("confirm");
-
-  if (confirm !== "true") {
-    return c.json(
-      errorResponse("Must pass ?confirm=true to delete all examples"),
-      400
-    );
-  }
-
-  const result = await db.delete(techniqueExamples).returning();
-
-  return c.json(
-    successResponse({
-      deleted: result.length,
-      message: `Deleted ${result.length} examples`,
-    })
-  );
-});
-
 export default examplesRouter;

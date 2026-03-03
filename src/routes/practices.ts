@@ -137,39 +137,6 @@ practicesRouter.post(
 );
 
 /**
- * DELETE /api/v1/practices
- *
- * Delete ALL practice puzzles. Requires admin authentication and ?confirm=true.
- * This is a destructive operation - use with caution.
- *
- * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
- * @query confirm - Must be "true" to proceed
- * @returns 200 - { deleted: number, message: string }
- * @returns 400 - Missing ?confirm=true
- * @returns 401 - Missing or invalid auth token
- * @returns 403 - Not an admin user
- */
-practicesRouter.delete("/", adminMiddleware, async c => {
-  const confirm = c.req.query("confirm");
-
-  if (confirm !== "true") {
-    return c.json(
-      errorResponse("Must pass ?confirm=true to delete all practices"),
-      400
-    );
-  }
-
-  const result = await db.delete(techniquePractices).returning();
-
-  return c.json(
-    successResponse({
-      deleted: result.length,
-      message: `Deleted ${result.length} practices`,
-    })
-  );
-});
-
-/**
  * DELETE /api/v1/practices/:uuid
  *
  * Delete a single practice puzzle. Requires admin authentication.
