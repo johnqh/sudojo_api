@@ -1,15 +1,45 @@
 # sudojo_api
 
-To install dependencies:
+Backend API server for Sudojo, a Sudoku learning platform. Built with Hono on Bun.
+
+## Setup
 
 ```bash
 bun install
+# Configure .env with DATABASE_URL, Firebase credentials
+bun run db:init      # Initialize database tables
+bun run dev          # Start dev server (port 3000)
 ```
 
-To run:
+## Routes
+
+| Prefix | Purpose |
+|--------|---------|
+| `/api/v1/dailies` | Daily puzzle endpoints |
+| `/api/v1/levels` | Puzzle level endpoints |
+| `/api/v1/boards` | Board/puzzle endpoints |
+| `/api/v1/techniques` | Solving technique endpoints |
+| `/api/v1/challenges` | Challenge endpoints |
+| `/api/v1/learning` | Learning progress endpoints |
+
+Firebase authentication required for protected routes.
+
+## Development
 
 ```bash
-bun run index.ts
+bun run dev          # Dev server with hot reload
+bun test             # Run tests
+bun run typecheck    # TypeScript check
+bun run lint         # ESLint
+bun run format       # Prettier
 ```
 
-This project was created using `bun init` in bun v1.3.1. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## Related Packages
+
+- `@sudobility/sudojo_types` -- Shared type definitions
+- `sudojo_app` / `sudojo_app_rn` -- Frontend apps
+- `sudojo_solver` -- Sudoku solving engine API
+
+## License
+
+BUSL-1.1

@@ -94,28 +94,6 @@ import { eq } from 'drizzle-orm';
 const puzzle = await db.select().from(puzzles).where(eq(puzzles.id, id));
 ```
 
-## Testing
-
-Tests use Bun's native test runner:
-
-```typescript
-import { test, expect, describe } from 'bun:test';
-
-describe('Levels API', () => {
-  test('should return levels list', async () => {
-    const response = await app.request('/api/levels');
-    expect(response.status).toBe(200);
-  });
-});
-```
-
-Run tests:
-```bash
-bun test                    # All tests
-bun run test:unit           # Unit tests only
-bun test tests/levels       # Specific test file
-```
-
 ## Environment Variables
 
 Bun automatically loads `.env` files. Required variables:
