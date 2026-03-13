@@ -10,7 +10,7 @@
         "@sudobility/auth_service": "^1.1.11",
         "@sudobility/ratelimit_service": "^1.0.28",
         "@sudobility/subscription_service": "^1.0.9",
-        "@sudobility/sudojo_ocr": "^1.1.6",
+        "@sudobility/sudojo_ocr": "^1.1.7",
         "@sudobility/sudojo_types": "^1.2.37",
         "@sudobility/types": "^1.9.57",
         "drizzle-orm": "^0.45.0",
@@ -265,7 +265,7 @@
 
     "@sudobility/subscription_service": ["@sudobility/subscription_service@1.0.9", "", { "peerDependencies": { "@sudobility/types": "^1.9.57" } }, "sha512-3vGH5qES8cPd7cv+l7qsxDSz6hGYt9utc9PGSCwmPq9NfXM+HMFQpKksI19BGnHFKPo7WuwEdgVHHqnwxuXVmg=="],
 
-    "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.6", "", { "peerDependencies": { "@sudobility/sudojo_types": "^1.2.37", "tesseract.js": "^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-ZHivqWnA0rMGb+QHRXplkd0fj7VsdpxcjLJijEkWhWESODJ3ZoxaxO8s6AUthqb4+x3Fk3TG2lYxyKHWpDXuvg=="],
+    "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.7", "", { "peerDependencies": { "@sudobility/sudojo_types": "^1.2.37", "tesseract.js": "^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-qPlhQ5AQm7M/lX1mVhNnThCSGuJKtSns9JGVSlKHf+gGHZhl5mIL/xjKuC2n5AyiQSM2RzLT36da5dN4Qijm2Q=="],
 
     "@sudobility/sudojo_types": ["@sudobility/sudojo_types@1.2.37", "", { "peerDependencies": { "@sudobility/types": "^1.9.57" } }, "sha512-nQGK7Ur3oS9tu+n06DGULJajGep662ioKEKmJjkWF7T9OgGGI2hHDwWthj9cN3QCHSrCu9Mb9MA4UMI9nzx6cQ=="],
 

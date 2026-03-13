@@ -76,7 +76,7 @@ ocrRouter.post('/extract', zValidator('json', extractSchema), async (c) => {
       skipBoardDetection: false,
       preprocess: true,
       minConfidence: 1,
-      cellMargin: 0.154,
+      cellMargin: 0.03,
       recognizePencilmarks: true,
     });
 
