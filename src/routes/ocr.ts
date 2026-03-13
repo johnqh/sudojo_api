@@ -14,7 +14,7 @@ import {
   type CanvasAdapter,
 } from '@sudobility/sudojo_ocr';
 import { createNodeAdapter } from '@sudobility/sudojo_ocr/node';
-import { successResponse, errorResponse } from '@sudobility/sudojo_types';
+import { successResponse, errorResponse, type SolverBoard } from '@sudobility/sudojo_types';
 
 const ocrRouter = new Hono();
 
@@ -38,7 +38,7 @@ const extractSchema = z.object({
 
 // Response type
 interface OCRExtractData {
-  puzzle: string;
+  board: SolverBoard;
   confidence: number;
   digitCount: number;
 }
@@ -51,7 +51,7 @@ interface OCRExtractData {
  * - image: Base64-encoded image data (without data URL prefix)
  *
  * Response:
- * - puzzle: 81-character puzzle string
+ * - board: SolverBoard with original puzzle, user state, and pencilmark data
  * - confidence: OCR confidence score (0-100)
  * - digitCount: Number of digits recognized
  */
@@ -77,10 +77,12 @@ ocrRouter.post('/extract', zValidator('json', extractSchema), async (c) => {
       preprocess: true,
       minConfidence: 1,
       cellMargin: 0.154,
+      recognizePencilmarks: true,
     });
 
     // Validate result
-    if (!result.puzzle || result.puzzle.length !== 81) {
+    const puzzle = result.board.original;
+    if (!puzzle || puzzle.length !== 81) {
       return c.json(
         errorResponse('Could not extract a valid puzzle from the image'),
         400
@@ -88,18 +90,17 @@ ocrRouter.post('/extract', zValidator('json', extractSchema), async (c) => {
     }
 
     // Check minimum clues
-    const digitCount = result.puzzle.replace(/0/g, '').length;
-    if (digitCount < 17) {
+    if (result.digitCount < 17) {
       return c.json(
-        errorResponse(`Only ${digitCount} clues detected, minimum 17 required for a valid puzzle`),
+        errorResponse(`Only ${result.digitCount} clues detected, minimum 17 required for a valid puzzle`),
         400
       );
     }
 
     const data: OCRExtractData = {
-      puzzle: result.puzzle,
+      board: result.board,
       confidence: result.confidence,
-      digitCount,
+      digitCount: result.digitCount,
     };
 
     return c.json(successResponse(data));
