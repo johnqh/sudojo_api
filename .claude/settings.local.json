@@ -12,7 +12,12 @@
       "Bash(git push:*)",
       "Bash(bunx tsc:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(file:*)",
+      "Bash(ls:*)",
+      "Bash(xargs cat:*)",
+      "Bash(mkdir:*)",
+      "Bash(npx vitest:*)"
     ]
   }
 }
