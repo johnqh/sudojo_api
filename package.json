@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.89",
+  "version": "1.0.90",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -39,7 +39,7 @@
     "@sudobility/auth_service": "^1.1.11",
     "@sudobility/ratelimit_service": "^1.0.28",
     "@sudobility/subscription_service": "^1.0.9",
-    "@sudobility/sudojo_ocr": "^1.1.7",
+    "@sudobility/sudojo_ocr": "^1.1.8",
     "@sudobility/sudojo_types": "^1.2.37",
     "@sudobility/types": "^1.9.57",
     "drizzle-orm": "^0.45.0",
