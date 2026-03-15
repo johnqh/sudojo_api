@@ -18,7 +18,8 @@
       "Bash(xargs cat:*)",
       "Bash(mkdir:*)",
       "Bash(npx vitest:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "WebSearch"
     ]
   }
 }
