@@ -19,6 +19,7 @@ export const levels = pgTable("levels", {
   title: varchar("title", { length: 255 }).notNull(),
   text: text("text"),
   requires_subscription: boolean("requires_subscription").default(false),
+  entitlement: varchar("entitlement", { length: 255 }),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 });

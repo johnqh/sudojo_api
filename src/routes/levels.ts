@@ -79,6 +79,7 @@ levelsRouter.post(
         title: body.title,
         text: body.text,
         requires_subscription: body.requires_subscription,
+        entitlement: body.entitlement,
       })
       .returning();
 
@@ -126,6 +127,7 @@ levelsRouter.put(
         text: body.text ?? current.text,
         requires_subscription:
           body.requires_subscription ?? current.requires_subscription,
+        entitlement: body.entitlement !== undefined ? body.entitlement : current.entitlement,
         updated_at: new Date(),
       })
       .where(eq(levels.level, level))

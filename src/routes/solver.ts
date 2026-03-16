@@ -2,16 +2,11 @@
  * @fileoverview Solver proxy routes for Sudojo API
  *
  * Proxies requests to the external solver service for puzzle solving,
- * validation, and generation. Implements hint access control based on
- * subscription tier and tracks hint usage for gamification.
- *
- * Access tiers for /solve:
- * - red_belt or site admin: all hint levels
- * - blue_belt: hint levels 1-5
- * - free/anonymous: hint levels 1-3
+ * validation, and generation. Tracks hint usage for gamification.
+ * Hint access gating is handled client-side using the level's entitlement field.
  *
  * Public endpoints: GET /validate, GET /generate
- * Access-controlled: GET /solve (hint access middleware, no hard auth required)
+ * Authenticated: GET /solve (hint access middleware for auth context)
  */
 
 import { Hono, type Context } from "hono";
@@ -25,15 +20,12 @@ import {
   type SolveData,
   type ValidateData,
   type GenerateData,
-  type HintAccessDeniedResponse,
 } from "@sudobility/sudojo_types";
 import { db } from "../db";
 import { gameSessions, pointTransactions, userStats } from "../db/schema";
 
 import {
   hintAccessMiddleware,
-  getRequiredEntitlement,
-  type HintAccessContext,
 } from "../middleware/hintAccess";
 
 const solverRouter = new Hono();
@@ -217,26 +209,6 @@ async function handleSolveRequest(c: Context) {
       return c.json(errorResponse(errorMsg), 400);
     }
 
-    // Check hint access based on hint level
-    const hintAccess = c.get("hintAccess") as HintAccessContext | undefined;
-    const hintLevel = result.data.hints?.level ?? 0;
-
-    if (hintAccess && hintLevel > hintAccess.maxHintLevel) {
-      // User doesn't have access to this hint level
-      const response: HintAccessDeniedResponse = {
-        success: false,
-        error: {
-          code: "HINT_ACCESS_DENIED",
-          message: `This hint requires a higher subscription tier. Hint level: ${hintLevel}, your max level: ${hintAccess.maxHintLevel}`,
-          hintLevel,
-          requiredEntitlement: getRequiredEntitlement(hintLevel),
-          userState: hintAccess.userState,
-        },
-        timestamp: new Date().toISOString(),
-      };
-      return c.json(response, 402);
-    }
-
     // Track hint usage for gamification (if user is authenticated)
     const firebaseUser = c.get("firebaseUser") as { uid: string } | undefined;
     const techniqueLevel = result.data.hints?.level ?? 1;
@@ -281,9 +253,8 @@ async function handleSolveRequest(c: Context) {
  * @query autopencilmarks - "true"/"false" (defaults to "false")
  * @query pencilmarks - Comma-separated 81 elements (defaults to empty)
  * @query techniques - Comma-delimited technique numbers to filter (e.g., "1,2,3")
- * @returns 200 - Solve data with hints
+ * @returns 200 - Solve data with hints (all steps, client gates access)
  * @returns 400 - Solver error (invalid puzzle)
- * @returns 402 - Hint access denied (requires higher subscription tier)
  * @returns 503 - Solver service unavailable
  */
 solverRouter.get("/solve", hintAccessMiddleware, handleSolveRequest);

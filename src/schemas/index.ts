@@ -6,12 +6,14 @@ export const levelCreateSchema = z.object({
   title: z.string().min(1).max(255),
   text: z.string().nullish().default(""),
   requires_subscription: z.boolean().optional().default(false),
+  entitlement: z.string().max(255).nullish(),
 });
 
 export const levelUpdateSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   text: z.string().nullish(),
   requires_subscription: z.boolean().optional(),
+  entitlement: z.string().max(255).nullish(),
 });
 
 export const levelParamSchema = z.object({
