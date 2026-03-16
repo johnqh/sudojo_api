@@ -119,6 +119,18 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS techniques_path_idx ON techniques(path)
   `;
 
+  // Migration: add entitlement column to levels for tiered access control
+  await client`
+    ALTER TABLE levels ADD COLUMN IF NOT EXISTS entitlement VARCHAR(255)
+  `;
+  // Seed entitlement values for existing levels (idempotent: only updates null rows)
+  await client`
+    UPDATE levels SET entitlement = 'blue_belt,red_belt' WHERE level >= 8 AND level <= 10 AND entitlement IS NULL
+  `;
+  await client`
+    UPDATE levels SET entitlement = 'red_belt' WHERE level >= 11 AND level <= 12 AND entitlement IS NULL
+  `;
+
   await client`
     CREATE TABLE IF NOT EXISTS learning (
       uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
