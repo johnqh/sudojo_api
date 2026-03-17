@@ -1,17 +1,13 @@
 /**
  * Access control middleware for content-gating endpoints (e.g., daily puzzles).
  *
- * This is separate from the rate-limit middleware in rateLimit.ts:
- * - **accessControl** gates access to premium content using a daily access counter
- *   (via checkAndRecordAccess). Free users get a fixed number of accesses per day.
- * - **rateLimit** enforces hourly/daily/monthly API call limits using
- *   @sudobility/ratelimit_service. It protects against abuse across all endpoints.
- *
- * Both check subscriptions via RevenueCat — subscribers bypass both systems.
+ * Gates access to premium content using a daily access counter
+ * (via checkAndRecordAccess). Free users get a fixed number of accesses per day.
+ * Subscribers bypass via RevenueCat entitlement checks.
  */
 import type { Context, Next } from "hono";
 import { verifyIdToken, isSiteAdmin } from "../services/firebase";
-import { getSubscriptionHelper, getTestMode } from "./rateLimit";
+import { getSubscriptionHelper, getTestMode } from "./subscription";
 import { checkAndRecordAccess } from "../services/access";
 import { errorResponse } from "@sudobility/sudojo_types";
 

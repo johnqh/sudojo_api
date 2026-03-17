@@ -12,7 +12,6 @@ import {
   unique,
   index,
 } from "drizzle-orm/pg-core";
-import { createRateLimitCountersTablePublic } from "@sudobility/ratelimit_service";
 
 export const levels = pgTable("levels", {
   level: integer("level").primaryKey(),
@@ -227,8 +226,3 @@ export const pointTransactions = pgTable("point_transactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// =============================================================================
-// Rate Limit Counters Table (from @sudobility/subscription_service)
-// =============================================================================
-
-export const rateLimitCounters = createRateLimitCountersTablePublic("sudojo");

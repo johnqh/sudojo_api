@@ -4,7 +4,7 @@
 
 import type { Context, Next } from "hono";
 import { verifyIdToken, isSiteAdmin } from "../services/firebase";
-import { getSubscriptionHelper, getTestMode } from "./rateLimit";
+import { getSubscriptionHelper, getTestMode } from "./subscription";
 import {
   type HintAccessUserState,
   type HintEntitlement,

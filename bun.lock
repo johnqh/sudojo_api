@@ -8,7 +8,6 @@
         "@hono/zod-validator": "^0.7.5",
         "@napi-rs/canvas": "^0.1.68",
         "@sudobility/auth_service": "^1.1.12",
-        "@sudobility/ratelimit_service": "^1.0.29",
         "@sudobility/subscription_service": "^1.0.10",
         "@sudobility/sudojo_ocr": "^1.1.14",
         "@sudobility/sudojo_types": "^1.2.39",
@@ -260,8 +259,6 @@
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
     "@sudobility/auth_service": ["@sudobility/auth_service@1.1.12", "", { "peerDependencies": { "@sudobility/types": "^1.9.58", "firebase-admin": "^13.0.0" } }, "sha512-K0CJXE3c3zF9SW3IVznDMrIcsxAyPDjgT1D4vStr7OjI4iM4tHjVTtdPJrMP/R/7FcprjfoPJk7sk2DwbmHYSw=="],
-
-    "@sudobility/ratelimit_service": ["@sudobility/ratelimit_service@1.0.29", "", { "peerDependencies": { "@sudobility/types": "^1.9.58", "drizzle-orm": "^0.45.0", "hono": "^4.0.0", "postgres": "^3.4.0" } }, "sha512-KQ+OoOFrpH2G1JS4jFMfMWhU+hfbOM/b3Pl8DJsOmcIkVUuIQDCwUxQRGUq+mmzdgT3DIcYwWSxi5aSrBGZtag=="],
 
     "@sudobility/subscription_service": ["@sudobility/subscription_service@1.0.10", "", { "peerDependencies": { "@sudobility/types": "^1.9.58" } }, "sha512-j1xbbYBXH9nh0JIe/5i/PYp/i0L4JezXxT4PunswXSj40G2XK7t6SdyEaMN5tS48NXTov6ub6DKcDQHxuNP65g=="],
 

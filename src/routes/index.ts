@@ -13,7 +13,6 @@
  * - challenges: Challenge puzzle CRUD (public read, admin write)
  * - users: User info and subscriptions (Firebase auth required)
  * - solver: Puzzle solving, validation, generation proxy (hint access control)
- * - ratelimits: Rate limit config and history (Firebase auth required)
  * - examples: Technique example CRUD (public read, admin write)
  * - practices: Practice puzzle CRUD (public read, admin write)
  * - play: Game session management (Firebase auth required)
@@ -30,7 +29,6 @@ import dailiesRouter from "./dailies";
 import challengesRouter from "./challenges";
 import usersRouter from "./users";
 import solverRouter from "./solver";
-import ratelimitsRouter from "./ratelimits";
 import examplesRouter from "./examples";
 import practicesRouter from "./practices";
 import playRouter from "./play";
@@ -47,7 +45,6 @@ routes.route("/dailies", dailiesRouter);
 routes.route("/challenges", challengesRouter);
 routes.route("/users", usersRouter);
 routes.route("/solver", solverRouter);
-routes.route("/ratelimits", ratelimitsRouter);
 routes.route("/examples", examplesRouter);
 routes.route("/practices", practicesRouter);
 routes.route("/play", playRouter);

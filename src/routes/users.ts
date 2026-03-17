@@ -6,7 +6,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { firebaseAuthMiddleware } from "../middleware/firebaseAuth";
 import { userIdParamSchema } from "../schemas";
-import { getSubscriptionHelper, getTestMode } from "../middleware/rateLimit";
+import { getSubscriptionHelper, getTestMode } from "../middleware/subscription";
 import { getUserInfo } from "../services/firebase";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
 

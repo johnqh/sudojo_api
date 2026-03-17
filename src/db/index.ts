@@ -20,7 +20,7 @@ import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import { getRequiredEnv } from "../lib/env-helper";
-import { initRateLimitTable } from "@sudobility/ratelimit_service";
+
 
 // Lazy initialization to allow test env to be applied first
 let _client: ReturnType<typeof postgres> | null = null;
@@ -73,7 +73,6 @@ export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
  * 7. access_logs (no dependencies)
  * 8. technique_examples (references boards)
  * 9. technique_practices (references techniques, technique_examples)
- * 10. rate_limit_counters (via ratelimit_service)
  *
  * All statements are idempotent (IF NOT EXISTS).
  * Column migrations use ALTER TABLE ADD COLUMN IF NOT EXISTS.
@@ -220,9 +219,6 @@ export async function initDatabase() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `;
-
-  // Rate limit counters table (from @sudobility/subscription_service)
-  await initRateLimitTable(client, null, "sudojo");
 
   console.log("Database tables initialized");
 }
