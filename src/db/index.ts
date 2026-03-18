@@ -142,14 +142,14 @@ export async function initDatabase() {
     UPDATE levels SET offer_id = '8_red_belt' WHERE level >= 11 AND level <= 12 AND offer_id IS NULL
   `;
 
-  // Migration: add percentage column to levels for pre-computed board stats
+  // Migration: add percentage column to levels for pre-computed board stats (ratio 0-1)
   await client`
-    ALTER TABLE levels ADD COLUMN IF NOT EXISTS percentage INTEGER
+    ALTER TABLE levels ADD COLUMN IF NOT EXISTS percentage REAL
   `;
 
-  // Migration: add percentage column to techniques for pre-computed board stats
+  // Migration: add percentage column to techniques for pre-computed board stats (ratio 0-1)
   await client`
-    ALTER TABLE techniques ADD COLUMN IF NOT EXISTS percentage INTEGER
+    ALTER TABLE techniques ADD COLUMN IF NOT EXISTS percentage REAL
   `;
 
   await client`

@@ -209,8 +209,9 @@ boardsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
  * POST /api/v1/boards/update-stats
  *
  * Calculate and update percentage fields on levels and techniques tables.
- * - Level percentage: boards with this level / total boards * 100
- * - Technique percentage: boards with this technique bit set / total boards * 100
+ * Values are stored as ratios (0-1), e.g. 0.1234 = 12.34%.
+ * - Level ratio: boards with this level / total boards
+ * - Technique ratio: boards with this technique bit set / total boards
  *
  * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
  * @returns 200 - { levels: Record<number, number>, techniques: Record<number, number> }
@@ -227,7 +228,7 @@ boardsRouter.post("/update-stats", adminMiddleware, async c => {
     return c.json(successResponse({ levels: {}, techniques: {} }));
   }
 
-  // Calculate level percentages
+  // Calculate level ratios
   const levelRows = await db
     .select({
       level: boards.level,
@@ -237,21 +238,21 @@ boardsRouter.post("/update-stats", adminMiddleware, async c => {
     .where(sql`${boards.level} IS NOT NULL AND ${boards.techniques} > 0`)
     .groupBy(boards.level);
 
-  const levelPercentages: Record<number, number> = {};
+  const levelRatios: Record<number, number> = {};
   for (const row of levelRows) {
     if (row.level !== null) {
-      const pct = Math.round((row.count / total) * 100);
-      levelPercentages[row.level] = pct;
+      const ratio = row.count / total;
+      levelRatios[row.level] = ratio;
 
       await db
         .update(levels)
-        .set({ percentage: pct, updated_at: new Date() })
+        .set({ percentage: ratio, updated_at: new Date() })
         .where(eq(levels.level, row.level));
     }
   }
 
-  // Calculate technique percentages (techniques 1-60)
-  const techniquePercentages: Record<number, number> = {};
+  // Calculate technique ratios (techniques 1-60)
+  const techniqueRatios: Record<number, number> = {};
   for (let t = 1; t <= 60; t++) {
     const bit = Number(BigInt(1) << BigInt(t));
     const [result] = await db
@@ -260,18 +261,17 @@ boardsRouter.post("/update-stats", adminMiddleware, async c => {
       .where(sql`(${boards.techniques} & ${bit}) != 0`);
     const count = result?.count ?? 0;
     if (count > 0) {
-      const pct = Math.round((count / total) * 100);
-      techniquePercentages[t] = pct;
+      const ratio = count / total;
+      techniqueRatios[t] = ratio;
 
-      // Update technique row if it exists
       await db
         .update(techniques)
-        .set({ percentage: pct, updated_at: new Date() })
+        .set({ percentage: ratio, updated_at: new Date() })
         .where(eq(techniques.technique, t));
     }
   }
 
-  return c.json(successResponse({ levels: levelPercentages, techniques: techniquePercentages }));
+  return c.json(successResponse({ levels: levelRatios, techniques: techniqueRatios }));
 });
 
 /**
