@@ -130,6 +130,28 @@ export async function initDatabase() {
     UPDATE levels SET entitlement = 'red_belt' WHERE level >= 11 AND level <= 12 AND entitlement IS NULL
   `;
 
+  // Migration: add offer_id column to levels for linking to RevenueCat offerings
+  await client`
+    ALTER TABLE levels ADD COLUMN IF NOT EXISTS offer_id VARCHAR(255)
+  `;
+  // Seed offer_id values for existing levels (idempotent: only updates null rows)
+  await client`
+    UPDATE levels SET offer_id = '1_blue_belt' WHERE level >= 8 AND level <= 10 AND offer_id IS NULL
+  `;
+  await client`
+    UPDATE levels SET offer_id = '8_red_belt' WHERE level >= 11 AND level <= 12 AND offer_id IS NULL
+  `;
+
+  // Migration: add percentage column to levels for pre-computed board stats
+  await client`
+    ALTER TABLE levels ADD COLUMN IF NOT EXISTS percentage INTEGER
+  `;
+
+  // Migration: add percentage column to techniques for pre-computed board stats
+  await client`
+    ALTER TABLE techniques ADD COLUMN IF NOT EXISTS percentage INTEGER
+  `;
+
   await client`
     CREATE TABLE IF NOT EXISTS learning (
       uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),

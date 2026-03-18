@@ -10,7 +10,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq, desc, sql } from "drizzle-orm";
-import { db, boards } from "../db";
+import { db, boards, levels, techniques } from "../db";
 import {
   boardCreateSchema,
   boardUpdateSchema,
@@ -203,6 +203,75 @@ boardsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
   }
 
   return c.json(successResponse(rows[0]));
+});
+
+/**
+ * POST /api/v1/boards/update-stats
+ *
+ * Calculate and update percentage fields on levels and techniques tables.
+ * - Level percentage: boards with this level / total boards * 100
+ * - Technique percentage: boards with this technique bit set / total boards * 100
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @returns 200 - { levels: Record<number, number>, techniques: Record<number, number> }
+ */
+boardsRouter.post("/update-stats", adminMiddleware, async c => {
+  // Get total board count (only boards with techniques set)
+  const [totalResult] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(boards)
+    .where(sql`${boards.techniques} > 0`);
+  const total = totalResult?.count ?? 0;
+
+  if (total === 0) {
+    return c.json(successResponse({ levels: {}, techniques: {} }));
+  }
+
+  // Calculate level percentages
+  const levelRows = await db
+    .select({
+      level: boards.level,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(boards)
+    .where(sql`${boards.level} IS NOT NULL AND ${boards.techniques} > 0`)
+    .groupBy(boards.level);
+
+  const levelPercentages: Record<number, number> = {};
+  for (const row of levelRows) {
+    if (row.level !== null) {
+      const pct = Math.round((row.count / total) * 100);
+      levelPercentages[row.level] = pct;
+
+      await db
+        .update(levels)
+        .set({ percentage: pct, updated_at: new Date() })
+        .where(eq(levels.level, row.level));
+    }
+  }
+
+  // Calculate technique percentages (techniques 1-60)
+  const techniquePercentages: Record<number, number> = {};
+  for (let t = 1; t <= 60; t++) {
+    const bit = Number(BigInt(1) << BigInt(t));
+    const [result] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(boards)
+      .where(sql`(${boards.techniques} & ${bit}) != 0`);
+    const count = result?.count ?? 0;
+    if (count > 0) {
+      const pct = Math.round((count / total) * 100);
+      techniquePercentages[t] = pct;
+
+      // Update technique row if it exists
+      await db
+        .update(techniques)
+        .set({ percentage: pct, updated_at: new Date() })
+        .where(eq(techniques.technique, t));
+    }
+  }
+
+  return c.json(successResponse({ levels: levelPercentages, techniques: techniquePercentages }));
 });
 
 /**

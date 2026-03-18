@@ -80,6 +80,8 @@ levelsRouter.post(
         text: body.text,
         requires_subscription: body.requires_subscription,
         entitlement: body.entitlement,
+        offer_id: body.offer_id,
+        percentage: body.percentage ?? null,
       })
       .returning();
 
@@ -128,6 +130,8 @@ levelsRouter.put(
         requires_subscription:
           body.requires_subscription ?? current.requires_subscription,
         entitlement: body.entitlement !== undefined ? body.entitlement : current.entitlement,
+        offer_id: body.offer_id !== undefined ? body.offer_id : current.offer_id,
+        percentage: body.percentage !== undefined ? body.percentage : current.percentage,
         updated_at: new Date(),
       })
       .where(eq(levels.level, level))

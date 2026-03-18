@@ -19,6 +19,8 @@ export const levels = pgTable("levels", {
   text: text("text"),
   requires_subscription: boolean("requires_subscription").default(false),
   entitlement: varchar("entitlement", { length: 255 }),
+  offer_id: varchar("offer_id", { length: 255 }),
+  percentage: integer("percentage"),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 });
@@ -32,6 +34,7 @@ export const techniques = pgTable("techniques", {
   path: varchar("path", { length: 255 }),
   dependencies: text("dependencies"),
   text: text("text"),
+  percentage: integer("percentage"),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 }, (table) => ({

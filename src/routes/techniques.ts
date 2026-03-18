@@ -134,6 +134,7 @@ techniquesRouter.post(
         level: body.level,
         title: body.title,
         text: body.text,
+        percentage: body.percentage ?? null,
       })
       .returning();
 
@@ -179,6 +180,7 @@ techniquesRouter.put(
         level: body.level ?? current.level,
         title: body.title ?? current.title,
         text: body.text ?? current.text,
+        percentage: body.percentage !== undefined ? body.percentage : current.percentage,
         updated_at: new Date(),
       })
       .where(eq(techniques.technique, technique))

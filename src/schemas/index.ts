@@ -7,6 +7,8 @@ export const levelCreateSchema = z.object({
   text: z.string().nullish().default(""),
   requires_subscription: z.boolean().optional().default(false),
   entitlement: z.string().max(255).nullish(),
+  offer_id: z.string().max(255).nullish(),
+  percentage: z.number().int().min(0).max(100).nullish(),
 });
 
 export const levelUpdateSchema = z.object({
@@ -14,6 +16,8 @@ export const levelUpdateSchema = z.object({
   text: z.string().nullish(),
   requires_subscription: z.boolean().optional(),
   entitlement: z.string().max(255).nullish(),
+  offer_id: z.string().max(255).nullish(),
+  percentage: z.number().int().min(0).max(100).nullish(),
 });
 
 export const levelParamSchema = z.object({
@@ -27,12 +31,14 @@ export const techniqueCreateSchema = z.object({
   level: z.number().int().min(1).max(12),
   title: z.string().min(1).max(255),
   text: z.string().nullish().default(""),
+  percentage: z.number().int().min(0).max(100).nullish(),
 });
 
 export const techniqueUpdateSchema = z.object({
   level: z.number().int().min(1).max(12).optional(),
   title: z.string().min(1).max(255).optional(),
   text: z.string().nullish(),
+  percentage: z.number().int().min(0).max(100).nullish(),
 });
 
 export const techniqueParamSchema = z.object({
