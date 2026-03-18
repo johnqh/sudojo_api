@@ -146,10 +146,18 @@ export async function initDatabase() {
   await client`
     ALTER TABLE levels ADD COLUMN IF NOT EXISTS percentage REAL
   `;
+  // Migration: convert percentage from INTEGER to REAL if needed
+  await client`
+    ALTER TABLE levels ALTER COLUMN percentage TYPE REAL
+  `;
 
   // Migration: add percentage column to techniques for pre-computed board stats (ratio 0-1)
   await client`
     ALTER TABLE techniques ADD COLUMN IF NOT EXISTS percentage REAL
+  `;
+  // Migration: convert percentage from INTEGER to REAL if needed
+  await client`
+    ALTER TABLE techniques ALTER COLUMN percentage TYPE REAL
   `;
 
   await client`
