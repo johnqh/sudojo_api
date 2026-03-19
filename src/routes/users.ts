@@ -76,6 +76,7 @@ usersRouter.get(
         hasSubscription: subscriptionInfo.entitlements.length > 0,
         entitlements: subscriptionInfo.entitlements,
         subscriptionStartedAt: subscriptionInfo.subscriptionStartedAt,
+        platform: subscriptionInfo.platform,
       };
       return c.json(successResponse(subscriptionResult));
     } catch (error) {
