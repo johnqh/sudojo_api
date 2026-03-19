@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { firebaseAuthMiddleware } from "../middleware/firebaseAuth";
 import { userIdParamSchema } from "../schemas";
+import { NONE_ENTITLEMENT } from "@sudobility/types";
 import { getSubscriptionHelper, getTestMode } from "../middleware/subscription";
 import { getUserInfo } from "../services/firebase";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
@@ -73,7 +74,7 @@ usersRouter.get(
       const subscriptionInfo = await subHelper.getSubscriptionInfo(userId, testMode);
       // Transform to match the expected response format
       const subscriptionResult = {
-        hasSubscription: subscriptionInfo.entitlements.length > 0,
+        hasSubscription: subscriptionInfo.entitlements.length > 0 && !subscriptionInfo.entitlements.includes(NONE_ENTITLEMENT),
         entitlements: subscriptionInfo.entitlements,
         subscriptionStartedAt: subscriptionInfo.subscriptionStartedAt,
         platform: subscriptionInfo.platform,
