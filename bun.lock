@@ -8,7 +8,7 @@
         "@hono/zod-validator": "^0.7.5",
         "@napi-rs/canvas": "^0.1.68",
         "@sudobility/auth_service": "^1.1.13",
-        "@sudobility/subscription_service": "^1.0.13",
+        "@sudobility/subscription_service": "^1.0.14",
         "@sudobility/sudojo_ocr": "^1.1.17",
         "@sudobility/sudojo_types": "^1.2.42",
         "@sudobility/types": "^1.9.59",
@@ -260,7 +260,7 @@
 
     "@sudobility/auth_service": ["@sudobility/auth_service@1.1.13", "", { "peerDependencies": { "@sudobility/types": "^1.9.59", "firebase-admin": "^13.0.0" } }, "sha512-+uIjVyW8B1Sz2ZHHRQ1bggFY7QrryPwVo+dTEZ0xzcGFlAe0440vHAbnS/NYmA+EDRi6a7YW2u7c23aXiU3G/g=="],
 
-    "@sudobility/subscription_service": ["@sudobility/subscription_service@1.0.13", "", {}, "sha512-pqOJKo80JsnTXRdKgxcdNGFbjA6trM/kU4pGN6ZBUKjKt5ajvtkpaveyXAQKVY9pfneKZADzO3wbXsqZ7f2Svw=="],
+    "@sudobility/subscription_service": ["@sudobility/subscription_service@1.0.14", "", {}, "sha512-9AcTiv9cAxZC2iDzGKHBbxBWOz43woBv1s3HyYWq2vvNKfuOlR6f3XsUGU5RS3CelQPFBVNyZS6GEwkuPME1Rw=="],
 
     "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.17", "", { "peerDependencies": { "@sudobility/sudojo_types": "^1.2.42", "tesseract.js": "^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-UvIaihoCBH2d4AGPH8VyCs/Hj4U8DLgrAinUX5vHdqLXqD6dB3jRUhHy6kenA2xaLQExRn/iG4Ux1ECEBEuRbw=="],
 

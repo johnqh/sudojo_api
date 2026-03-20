@@ -78,6 +78,10 @@ usersRouter.get(
         entitlements: subscriptionInfo.entitlements,
         subscriptionStartedAt: subscriptionInfo.subscriptionStartedAt,
         platform: subscriptionInfo.platform,
+        productIdentifier: subscriptionInfo.productIdentifier,
+        expiresDate: subscriptionInfo.expiresDate,
+        sandbox: subscriptionInfo.sandbox,
+        store: subscriptionInfo.store,
       };
       return c.json(successResponse(subscriptionResult));
     } catch (error) {
