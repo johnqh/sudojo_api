@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.108",
+  "version": "1.0.109",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -38,7 +38,7 @@
     "@napi-rs/canvas": "^0.1.68",
     "@sudobility/auth_service": "^1.1.13",
     "@sudobility/subscription_service": "^1.0.14",
-    "@sudobility/sudojo_ocr": "^1.1.17",
+    "@sudobility/sudojo_ocr": "^1.1.18",
     "@sudobility/sudojo_types": "^1.2.43",
     "@sudobility/types": "^1.9.59",
     "drizzle-orm": "^0.45.0",
