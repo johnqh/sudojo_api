@@ -9,7 +9,7 @@
         "@napi-rs/canvas": "^0.1.68",
         "@sudobility/auth_service": "^1.1.13",
         "@sudobility/subscription_service": "^1.0.14",
-        "@sudobility/sudojo_ocr": "^1.1.18",
+        "@sudobility/sudojo_ocr": "^1.1.19",
         "@sudobility/sudojo_types": "^1.2.44",
         "@sudobility/types": "^1.9.59",
         "drizzle-orm": "^0.45.0",
@@ -262,7 +262,7 @@
 
     "@sudobility/subscription_service": ["@sudobility/subscription_service@1.0.14", "", {}, "sha512-9AcTiv9cAxZC2iDzGKHBbxBWOz43woBv1s3HyYWq2vvNKfuOlR6f3XsUGU5RS3CelQPFBVNyZS6GEwkuPME1Rw=="],
 
-    "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.18", "", { "peerDependencies": { "@sudobility/sudojo_types": "^1.2.43", "tesseract.js": "^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-WlimvJPcJxEDbU4Zd2/W1x+S9NkNHyfYPnxVW2vUEGbAORpgSTEa9KaUVuzREFqu1ft4o308kVIzivNHYUgO4w=="],
+    "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.19", "", { "peerDependencies": { "@sudobility/sudojo_types": "^1.2.44", "tesseract.js": "^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-F4AvJ9u1jJaFmb8yrlspP8dL/JJ3kajFhKb1RFwCzuokDeXWto2JoUkFNRuPbkKwdlQ+WIpNtbTQK44Bt+Sgvg=="],
 
     "@sudobility/sudojo_types": ["@sudobility/sudojo_types@1.2.44", "", { "peerDependencies": { "@sudobility/types": "^1.9.59" } }, "sha512-5WQi7yRaLqJk3BHQCcmBqm+GIwxgYNRsV5Dfcw2axbIDH3TtJP+cANcll0oSRMPdwFQJzhYs51OEx5LqwaE0xA=="],
 
