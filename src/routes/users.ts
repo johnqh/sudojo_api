@@ -82,6 +82,8 @@ usersRouter.get(
         expiresDate: subscriptionInfo.expiresDate,
         sandbox: subscriptionInfo.sandbox,
         store: subscriptionInfo.store,
+        willRenew: subscriptionInfo.willRenew,
+        managementUrl: subscriptionInfo.managementUrl,
       };
       return c.json(successResponse(subscriptionResult));
     } catch (error) {
