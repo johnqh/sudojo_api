@@ -22,6 +22,10 @@ RUN bunx tsc --noEmit
 # Production stage
 FROM oven/bun:1-slim AS production
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy package files
