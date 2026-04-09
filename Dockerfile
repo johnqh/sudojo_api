@@ -44,7 +44,7 @@ COPY src ./src
 ENV NODE_ENV=production
 
 # Expose port
-EXPOSE 3000
+EXPOSE 8010
 
 # Start the application
 CMD ["bun", "run", "src/index.ts"]
