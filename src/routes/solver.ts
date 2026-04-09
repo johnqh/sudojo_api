@@ -22,7 +22,8 @@ import {
   type GenerateData,
 } from "@sudobility/sudojo_types";
 import { db } from "../db";
-import { gameSessions, pointTransactions, userStats } from "../db/schema";
+import { gameSessions, pointTransactions, userStats, techniques as techniquesTable } from "../db/schema";
+import { hintTitleLocalization } from "../lib/localization";
 
 import {
   hintAccessMiddleware,
@@ -226,6 +227,38 @@ async function handleSolveRequest(c: Context) {
           techniqueLevel,
         };
       }
+    }
+
+    // Add localization to hint steps (title + restructure flat text localization)
+    if (result.data.hints?.steps && result.data.hints.technique > 0) {
+      const techRows = await db
+        .select({ path: techniquesTable.path })
+        .from(techniquesTable)
+        .where(eq(techniquesTable.technique, result.data.hints.technique));
+      const techniquePath = techRows[0]?.path ?? null;
+      const titleLoc = hintTitleLocalization(techniquePath);
+
+      result.data.hints.steps = result.data.hints.steps.map(step => {
+        // Transform flat localization from solver into structured format
+        const existing = step.localization as
+          | { stringKey?: string; values?: string[] }
+          | { text?: { stringKey: string; values: string[] } }
+          | undefined;
+        let textLoc: { stringKey: string; values: string[] } | undefined;
+        if (existing && "stringKey" in existing && existing.stringKey) {
+          textLoc = { stringKey: existing.stringKey, values: existing.values ?? [] };
+        } else if (existing && "text" in existing && existing.text) {
+          textLoc = existing.text;
+        }
+
+        return {
+          ...step,
+          localization: {
+            ...(textLoc ? { text: textLoc } : {}),
+            ...(titleLoc ? { title: titleLoc } : {}),
+          },
+        };
+      });
     }
 
     // Add points info to response if awarded

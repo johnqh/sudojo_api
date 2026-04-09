@@ -17,6 +17,7 @@ import {
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import { levelLocalization } from "../lib/localization";
 
 const levelsRouter = new Hono();
 
@@ -30,7 +31,11 @@ const levelsRouter = new Hono();
  */
 levelsRouter.get("/", async c => {
   const rows = await db.select().from(levels).orderBy(asc(levels.level));
-  return c.json(successResponse(rows));
+  const withLocalization = rows.map(row => ({
+    ...row,
+    localization: levelLocalization(row.level),
+  }));
+  return c.json(successResponse(withLocalization));
 });
 
 /**
@@ -51,7 +56,10 @@ levelsRouter.get("/:level", zValidator("param", levelParamSchema), async c => {
     return c.json(errorResponse("Level not found"), 404);
   }
 
-  return c.json(successResponse(rows[0]));
+  return c.json(successResponse({
+    ...rows[0],
+    localization: levelLocalization(rows[0].level),
+  }));
 });
 
 /**

@@ -25,6 +25,7 @@ import {
   pointTransactions,
 } from "../db/schema";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import { badgeLocalization } from "../lib/localization";
 
 const gamificationRouter = new Hono();
 
@@ -45,7 +46,11 @@ gamificationRouter.get("/badges", async c => {
       .from(badgeDefinitions)
       .orderBy(asc(badgeDefinitions.badgeType), asc(badgeDefinitions.requirementValue));
 
-    return c.json(successResponse(badges));
+    const withLocalization = badges.map(badge => ({
+      ...badge,
+      localization: badgeLocalization(badge.badgeKey),
+    }));
+    return c.json(successResponse(withLocalization));
   } catch (error) {
     console.error("Error fetching badge definitions:", error);
     return c.json(errorResponse("Failed to fetch badge definitions"), 500);
@@ -95,12 +100,17 @@ gamificationRouter.get("/stats", firebaseAuthMiddleware, async c => {
       )
       .where(eq(userBadges.userId, userId));
 
+    const badgesWithLocalization = earnedBadges.map(badge => ({
+      ...badge,
+      localization: badgeLocalization(badge.badgeKey),
+    }));
+
     return c.json(
       successResponse({
         totalPoints: stats.totalPoints,
         userLevel: stats.userLevel,
         gamesCompleted: stats.gamesCompleted,
-        badges: earnedBadges,
+        badges: badgesWithLocalization,
       })
     );
   } catch (error) {

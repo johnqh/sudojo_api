@@ -10,8 +10,8 @@
 
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { eq, and, asc } from "drizzle-orm";
-import { db, learning } from "../db";
+import { eq, and, asc, inArray } from "drizzle-orm";
+import { db, learning, techniques } from "../db";
 import {
   learningCreateSchema,
   learningUpdateSchema,
@@ -19,6 +19,7 @@ import {
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import { learningLocalization } from "../lib/localization";
 
 const learningRouter = new Hono();
 
@@ -83,7 +84,18 @@ learningRouter.get("/", async c => {
       .orderBy(asc(learning.technique), asc(learning.index));
   }
 
-  return c.json(successResponse(rows));
+  // Look up technique paths for localization
+  const techniqueNumbers = [...new Set(rows.map(r => r.technique).filter((t): t is number => t !== null))];
+  const techPathRows = techniqueNumbers.length > 0
+    ? await db.select({ technique: techniques.technique, path: techniques.path }).from(techniques).where(inArray(techniques.technique, techniqueNumbers))
+    : [];
+  const techPathMap = new Map(techPathRows.map(t => [t.technique, t.path]));
+
+  const withLocalization = rows.map(row => ({
+    ...row,
+    localization: learningLocalization(row.technique ? techPathMap.get(row.technique) ?? null : null, row.index),
+  }));
+  return c.json(successResponse(withLocalization));
 });
 
 /**
@@ -104,7 +116,23 @@ learningRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
     return c.json(errorResponse("Learning entry not found"), 404);
   }
 
-  return c.json(successResponse(rows[0]));
+  const row = rows[0];
+  // Look up technique path for localization
+  let techniquePath: string | null = null;
+  if (row.technique !== null) {
+    const techRows = await db
+      .select({ path: techniques.path })
+      .from(techniques)
+      .where(eq(techniques.technique, row.technique));
+    if (techRows.length > 0) {
+      techniquePath = techRows[0].path;
+    }
+  }
+
+  return c.json(successResponse({
+    ...row,
+    localization: learningLocalization(techniquePath, row.index),
+  }));
 });
 
 /**

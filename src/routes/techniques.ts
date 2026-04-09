@@ -19,6 +19,7 @@ import {
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import { techniqueLocalization } from "../lib/localization";
 
 const techniquesRouter = new Hono();
 
@@ -50,7 +51,11 @@ techniquesRouter.get("/", async c => {
     rows = await db.select().from(techniques).orderBy(asc(techniques.title));
   }
 
-  return c.json(successResponse(rows));
+  const withLocalization = rows.map(row => ({
+    ...row,
+    localization: techniqueLocalization(row.path),
+  }));
+  return c.json(successResponse(withLocalization));
 });
 
 /**
@@ -77,7 +82,10 @@ techniquesRouter.get(
       return c.json(errorResponse("Technique not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse({
+      ...rows[0],
+      localization: techniqueLocalization(rows[0].path),
+    }));
   }
 );
 
@@ -105,7 +113,10 @@ techniquesRouter.get(
       return c.json(errorResponse("Technique not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse({
+      ...rows[0],
+      localization: techniqueLocalization(rows[0].path),
+    }));
   }
 );
 

@@ -21,7 +21,8 @@ import {
   badgeDefinitions,
   pointTransactions,
 } from "../db/schema";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import { successResponse, errorResponse, type LocalizedHint } from "@sudobility/sudojo_types";
+import { badgeLocalization } from "../lib/localization";
 
 const playRouter = new Hono();
 
@@ -97,8 +98,8 @@ async function checkAndAwardBadges(
   puzzleLevel: number,
   isPerfectPlay: boolean,
   newGamesCompleted: number
-): Promise<Array<{ badgeKey: string; title: string; description: string | null }>> {
-  const newBadges: Array<{ badgeKey: string; title: string; description: string | null }> = [];
+): Promise<Array<{ badgeKey: string; title: string; description: string | null; localization?: { title?: LocalizedHint; description?: LocalizedHint } }>> {
+  const newBadges: Array<{ badgeKey: string; title: string; description: string | null; localization?: { title?: LocalizedHint; description?: LocalizedHint } }> = [];
 
   // Get user's existing badges
   const existingBadges = await db
@@ -126,6 +127,7 @@ async function checkAndAwardBadges(
           badgeKey: levelBadgeKey,
           title: badgeDef[0].title,
           description: badgeDef[0].description,
+          localization: badgeLocalization(levelBadgeKey),
         });
         existingBadgeKeys.add(levelBadgeKey);
       }
@@ -152,6 +154,7 @@ async function checkAndAwardBadges(
             badgeKey: gamesBadgeKey,
             title: badgeDef[0].title,
             description: badgeDef[0].description,
+            localization: badgeLocalization(gamesBadgeKey),
           });
           existingBadgeKeys.add(gamesBadgeKey);
         }

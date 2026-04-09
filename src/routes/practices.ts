@@ -19,6 +19,7 @@ import {
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
 import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import { techniqueTitleLocalization } from "../lib/localization";
 
 const practicesRouter = new Hono();
 
@@ -36,6 +37,7 @@ practicesRouter.get("/counts", async c => {
     .select({
       technique: techniques.technique,
       technique_title: techniques.title,
+      technique_path: techniques.path,
       count: sql<number>`COALESCE(
         (SELECT COUNT(*) FROM technique_practices WHERE technique_practices.technique = techniques.technique),
         0
@@ -44,7 +46,13 @@ practicesRouter.get("/counts", async c => {
     .from(techniques)
     .orderBy(techniques.technique);
 
-  return c.json(successResponse(rows));
+  const withLocalization = rows.map(row => ({
+    technique: row.technique,
+    technique_title: row.technique_title,
+    count: row.count,
+    localization: techniqueTitleLocalization(row.technique_path),
+  }));
+  return c.json(successResponse(withLocalization));
 });
 
 /**
