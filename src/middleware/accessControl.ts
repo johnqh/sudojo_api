@@ -63,7 +63,10 @@ export function createAccessControlMiddleware(endpoint: string) {
       if (subHelper) {
         try {
           const testMode = getTestMode(c);
-          const subscriptionInfo = await subHelper.getSubscriptionInfo(userId, testMode);
+          const subscriptionInfo = await subHelper.getSubscriptionInfo(
+            userId,
+            testMode
+          );
           // Check if user has any active entitlements (non-empty array means they have a subscription)
           if (subscriptionInfo.entitlements.length > 0) {
             // Subscriber has unlimited access

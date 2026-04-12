@@ -24,7 +24,14 @@ import {
   badgeDefinitions,
   pointTransactions,
 } from "../db/schema";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  type GamificationStats,
+  type EarnedBadge,
+  type BadgeDefinition,
+  type PointTransaction,
+} from "@sudobility/sudojo_types";
 import { badgeLocalization } from "../lib/localization";
 
 const gamificationRouter = new Hono();
@@ -44,13 +51,16 @@ gamificationRouter.get("/badges", async c => {
     const badges = await db
       .select()
       .from(badgeDefinitions)
-      .orderBy(asc(badgeDefinitions.badgeType), asc(badgeDefinitions.requirementValue));
+      .orderBy(
+        asc(badgeDefinitions.badgeType),
+        asc(badgeDefinitions.requirementValue)
+      );
 
     const withLocalization = badges.map(badge => ({
       ...badge,
       localization: badgeLocalization(badge.badgeKey),
     }));
-    return c.json(successResponse(withLocalization));
+    return c.json(successResponse(withLocalization as BadgeDefinition[]));
   } catch (error) {
     console.error("Error fetching badge definitions:", error);
     return c.json(errorResponse("Failed to fetch badge definitions"), 500);
@@ -103,16 +113,15 @@ gamificationRouter.get("/stats", firebaseAuthMiddleware, async c => {
     const badgesWithLocalization = earnedBadges.map(badge => ({
       ...badge,
       localization: badgeLocalization(badge.badgeKey),
-    }));
+    })) as EarnedBadge[];
 
-    return c.json(
-      successResponse({
-        totalPoints: stats.totalPoints,
-        userLevel: stats.userLevel,
-        gamesCompleted: stats.gamesCompleted,
-        badges: badgesWithLocalization,
-      })
-    );
+    const gamificationStats: GamificationStats = {
+      totalPoints: stats.totalPoints,
+      userLevel: stats.userLevel,
+      gamesCompleted: stats.gamesCompleted,
+      badges: badgesWithLocalization,
+    };
+    return c.json(successResponse(gamificationStats));
   } catch (error) {
     console.error("Error fetching user stats:", error);
     return c.json(errorResponse("Failed to fetch user stats"), 500);
@@ -139,7 +148,7 @@ gamificationRouter.get("/history", firebaseAuthMiddleware, async c => {
       .limit(limit)
       .offset(offset);
 
-    return c.json(successResponse(transactions));
+    return c.json(successResponse(transactions as PointTransaction[]));
   } catch (error) {
     console.error("Error fetching point history:", error);
     return c.json(errorResponse("Failed to fetch point history"), 500);
@@ -175,7 +184,7 @@ gamificationRouter.post(
         })
         .returning();
 
-      return c.json(successResponse(newBadge[0]), 201);
+      return c.json(successResponse(newBadge[0] as BadgeDefinition), 201);
     } catch (error) {
       console.error("Error creating badge definition:", error);
       // Check for unique constraint violation
@@ -212,7 +221,7 @@ gamificationRouter.put(
         return c.json(errorResponse("Badge not found"), 404);
       }
 
-      return c.json(successResponse(updated[0]));
+      return c.json(successResponse(updated[0] as BadgeDefinition));
     } catch (error) {
       console.error("Error updating badge definition:", error);
       return c.json(errorResponse("Failed to update badge definition"), 500);

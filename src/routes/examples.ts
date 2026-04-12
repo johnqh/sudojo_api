@@ -24,6 +24,8 @@ import {
   techniqueToBit,
   ALL_TECHNIQUE_IDS,
   type TechniqueId,
+  type TechniqueExample,
+  type ExampleCountsData,
 } from "@sudobility/sudojo_types";
 
 const examplesRouter = new Hono();
@@ -46,7 +48,10 @@ examplesRouter.get("/", async c => {
   let rows;
   if (technique) {
     const techniqueId = parseInt(technique, 10);
-    if (isNaN(techniqueId) || !ALL_TECHNIQUE_IDS.includes(techniqueId as TechniqueId)) {
+    if (
+      isNaN(techniqueId) ||
+      !ALL_TECHNIQUE_IDS.includes(techniqueId as TechniqueId)
+    ) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
     rows = await db
@@ -56,7 +61,10 @@ examplesRouter.get("/", async c => {
       .orderBy(desc(techniqueExamples.created_at));
   } else if (hasTechnique) {
     const techniqueId = parseInt(hasTechnique, 10);
-    if (isNaN(techniqueId) || !ALL_TECHNIQUE_IDS.includes(techniqueId as TechniqueId)) {
+    if (
+      isNaN(techniqueId) ||
+      !ALL_TECHNIQUE_IDS.includes(techniqueId as TechniqueId)
+    ) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
     const bit = techniqueToBit(techniqueId as TechniqueId);
@@ -72,7 +80,7 @@ examplesRouter.get("/", async c => {
       .orderBy(desc(techniqueExamples.created_at));
   }
 
-  return c.json(successResponse(rows));
+  return c.json(successResponse(rows as TechniqueExample[]));
 });
 
 /**
@@ -94,7 +102,7 @@ examplesRouter.get("/counts", async c => {
     .orderBy(techniqueExamples.primary_technique);
 
   // Convert to a map for easier consumption
-  const counts: Record<number, number> = {};
+  const counts: ExampleCountsData = {};
   for (const row of rows) {
     counts[row.primary_technique] = row.count;
   }
@@ -120,7 +128,10 @@ examplesRouter.get("/random", async c => {
 
   if (technique) {
     techniqueId = parseInt(technique, 10);
-    if (isNaN(techniqueId) || !ALL_TECHNIQUE_IDS.includes(techniqueId as TechniqueId)) {
+    if (
+      isNaN(techniqueId) ||
+      !ALL_TECHNIQUE_IDS.includes(techniqueId as TechniqueId)
+    ) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
   }
@@ -145,7 +156,7 @@ examplesRouter.get("/random", async c => {
     return c.json(errorResponse("No examples found"), 404);
   }
 
-  return c.json(successResponse(rows[0]));
+  return c.json(successResponse(rows[0] as TechniqueExample));
 });
 
 /**
@@ -169,7 +180,7 @@ examplesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
     return c.json(errorResponse("Example not found"), 404);
   }
 
-  return c.json(successResponse(rows[0]));
+  return c.json(successResponse(rows[0] as TechniqueExample));
 });
 
 /**
@@ -203,7 +214,7 @@ examplesRouter.post(
       })
       .returning();
 
-    return c.json(successResponse(rows[0]), 201);
+    return c.json(successResponse(rows[0] as TechniqueExample), 201);
   }
 );
 
@@ -260,7 +271,7 @@ examplesRouter.put(
       .where(eq(techniqueExamples.uuid, uuid))
       .returning();
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as TechniqueExample));
   }
 );
 
@@ -292,7 +303,7 @@ examplesRouter.delete(
       return c.json(errorResponse("Example not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as TechniqueExample));
   }
 );
 

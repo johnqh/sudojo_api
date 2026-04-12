@@ -11,7 +11,11 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { initDatabase, initGamificationTables, closeDatabase } from "./db";
 import routes from "./routes";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  type HealthCheckData,
+} from "@sudobility/sudojo_types";
 import { getEnv } from "./lib/env-helper";
 import { encryptSolutionsMiddleware } from "./middleware/encryptSolutions";
 
@@ -22,7 +26,7 @@ app.use("*", logger());
 app.use("*", cors());
 
 // Health check endpoints
-const healthResponse = {
+const healthResponse: HealthCheckData = {
   name: "Sudojo API",
   version: "1.0.0",
   status: "healthy",

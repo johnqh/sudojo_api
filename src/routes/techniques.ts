@@ -18,7 +18,11 @@ import {
   techniquePathParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  type Technique,
+} from "@sudobility/sudojo_types";
 import { techniqueLocalization } from "../lib/localization";
 
 const techniquesRouter = new Hono();
@@ -51,7 +55,7 @@ techniquesRouter.get("/", async c => {
     rows = await db.select().from(techniques).orderBy(asc(techniques.title));
   }
 
-  const withLocalization = rows.map(row => ({
+  const withLocalization: Technique[] = rows.map(row => ({
     ...row,
     localization: techniqueLocalization(row.path),
   }));
@@ -82,10 +86,11 @@ techniquesRouter.get(
       return c.json(errorResponse("Technique not found"), 404);
     }
 
-    return c.json(successResponse({
+    const technique: Technique = {
       ...rows[0],
       localization: techniqueLocalization(rows[0].path),
-    }));
+    };
+    return c.json(successResponse(technique));
   }
 );
 
@@ -113,10 +118,11 @@ techniquesRouter.get(
       return c.json(errorResponse("Technique not found"), 404);
     }
 
-    return c.json(successResponse({
+    const techniqueData: Technique = {
       ...rows[0],
       localization: techniqueLocalization(rows[0].path),
-    }));
+    };
+    return c.json(successResponse(techniqueData));
   }
 );
 
@@ -149,7 +155,7 @@ techniquesRouter.post(
       })
       .returning();
 
-    return c.json(successResponse(rows[0]), 201);
+    return c.json(successResponse(rows[0] as Technique), 201);
   }
 );
 
@@ -191,13 +197,14 @@ techniquesRouter.put(
         level: body.level ?? current.level,
         title: body.title ?? current.title,
         text: body.text ?? current.text,
-        percentage: body.percentage !== undefined ? body.percentage : current.percentage,
+        percentage:
+          body.percentage !== undefined ? body.percentage : current.percentage,
         updated_at: new Date(),
       })
       .where(eq(techniques.technique, technique))
       .returning();
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Technique));
   }
 );
 
@@ -230,7 +237,7 @@ techniquesRouter.delete(
       return c.json(errorResponse("Technique not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Technique));
   }
 );
 

@@ -16,7 +16,11 @@ import {
   levelParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  type Level,
+} from "@sudobility/sudojo_types";
 import { levelLocalization } from "../lib/localization";
 
 const levelsRouter = new Hono();
@@ -31,7 +35,7 @@ const levelsRouter = new Hono();
  */
 levelsRouter.get("/", async c => {
   const rows = await db.select().from(levels).orderBy(asc(levels.level));
-  const withLocalization = rows.map(row => ({
+  const withLocalization: Level[] = rows.map(row => ({
     ...row,
     localization: levelLocalization(row.level),
   }));
@@ -56,10 +60,11 @@ levelsRouter.get("/:level", zValidator("param", levelParamSchema), async c => {
     return c.json(errorResponse("Level not found"), 404);
   }
 
-  return c.json(successResponse({
+  const levelData: Level = {
     ...rows[0],
     localization: levelLocalization(rows[0].level),
-  }));
+  };
+  return c.json(successResponse(levelData));
 });
 
 /**
@@ -93,7 +98,7 @@ levelsRouter.post(
       })
       .returning();
 
-    return c.json(successResponse(rows[0]), 201);
+    return c.json(successResponse(rows[0] as Level), 201);
   }
 );
 
@@ -137,15 +142,20 @@ levelsRouter.put(
         text: body.text ?? current.text,
         requires_subscription:
           body.requires_subscription ?? current.requires_subscription,
-        entitlement: body.entitlement !== undefined ? body.entitlement : current.entitlement,
-        offer_id: body.offer_id !== undefined ? body.offer_id : current.offer_id,
-        percentage: body.percentage !== undefined ? body.percentage : current.percentage,
+        entitlement:
+          body.entitlement !== undefined
+            ? body.entitlement
+            : current.entitlement,
+        offer_id:
+          body.offer_id !== undefined ? body.offer_id : current.offer_id,
+        percentage:
+          body.percentage !== undefined ? body.percentage : current.percentage,
         updated_at: new Date(),
       })
       .where(eq(levels.level, level))
       .returning();
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Level));
   }
 );
 
@@ -178,7 +188,7 @@ levelsRouter.delete(
       return c.json(errorResponse("Level not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Level));
   }
 );
 

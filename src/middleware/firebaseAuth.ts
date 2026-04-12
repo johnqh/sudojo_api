@@ -4,7 +4,11 @@
 
 import type { Context, Next } from "hono";
 import type { DecodedIdToken } from "firebase-admin/auth";
-import { verifyIdToken, isAnonymousUser, isSiteAdmin } from "../services/firebase";
+import {
+  verifyIdToken,
+  isAnonymousUser,
+  isSiteAdmin,
+} from "../services/firebase";
 import { errorResponse } from "@sudobility/sudojo_types";
 
 declare module "hono" {

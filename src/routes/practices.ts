@@ -18,7 +18,13 @@ import {
   techniqueParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  type TechniquePractice,
+  type TechniquePracticeCountItem,
+  type PracticesBulkDeleteData,
+} from "@sudobility/sudojo_types";
 import { techniqueTitleLocalization } from "../lib/localization";
 
 const practicesRouter = new Hono();
@@ -46,7 +52,7 @@ practicesRouter.get("/counts", async c => {
     .from(techniques)
     .orderBy(techniques.technique);
 
-  const withLocalization = rows.map(row => ({
+  const withLocalization: TechniquePracticeCountItem[] = rows.map(row => ({
     technique: row.technique,
     technique_title: row.technique_title,
     count: row.count,
@@ -79,10 +85,13 @@ practicesRouter.get(
       .limit(1);
 
     if (rows.length === 0) {
-      return c.json(errorResponse("No practices found for this technique"), 404);
+      return c.json(
+        errorResponse("No practices found for this technique"),
+        404
+      );
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as TechniquePractice));
   }
 );
 
@@ -107,7 +116,7 @@ practicesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
     return c.json(errorResponse("Practice not found"), 404);
   }
 
-  return c.json(successResponse(rows[0]));
+  return c.json(successResponse(rows[0] as TechniquePractice));
 });
 
 /**
@@ -140,9 +149,41 @@ practicesRouter.post(
       })
       .returning();
 
-    return c.json(successResponse(rows[0]), 201);
+    return c.json(successResponse(rows[0] as TechniquePractice), 201);
   }
 );
+
+/**
+ * DELETE /api/v1/practices
+ *
+ * Delete all practice puzzles. Requires admin authentication
+ * and a `confirm=true` query parameter as a safety check.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @query confirm - Must be "true" to proceed
+ * @returns 200 - { deleted: number, message: string }
+ * @returns 400 - Missing confirm=true query parameter
+ * @returns 401 - Missing or invalid auth token
+ * @returns 403 - Not an admin user
+ */
+practicesRouter.delete("/", adminMiddleware, async c => {
+  const confirm = c.req.query("confirm");
+
+  if (confirm !== "true") {
+    return c.json(
+      errorResponse("Query parameter confirm=true is required"),
+      400
+    );
+  }
+
+  const rows = await db.delete(techniquePractices).returning();
+
+  const deleteResult: PracticesBulkDeleteData = {
+    deleted: rows.length,
+    message: `Deleted ${rows.length} practice(s)`,
+  };
+  return c.json(successResponse(deleteResult));
+});
 
 /**
  * DELETE /api/v1/practices/:uuid
@@ -172,7 +213,7 @@ practicesRouter.delete(
       return c.json(errorResponse("Practice not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as TechniquePractice));
   }
 );
 

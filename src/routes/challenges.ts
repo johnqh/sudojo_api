@@ -17,7 +17,11 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  type Challenge,
+} from "@sudobility/sudojo_types";
 
 const challengesRouter = new Hono();
 
@@ -82,7 +86,7 @@ challengesRouter.get("/", async c => {
       .orderBy(asc(challenges.difficulty), desc(challenges.created_at));
   }
 
-  return c.json(successResponse(rows));
+  return c.json(successResponse(rows as Challenge[]));
 });
 
 /**
@@ -157,7 +161,7 @@ challengesRouter.get("/random", async c => {
     return c.json(errorResponse("No challenges found"), 404);
   }
 
-  return c.json(successResponse(rows[0]));
+  return c.json(successResponse(rows[0] as Challenge));
 });
 
 /**
@@ -184,7 +188,7 @@ challengesRouter.get(
       return c.json(errorResponse("Challenge not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Challenge));
   }
 );
 
@@ -217,7 +221,7 @@ challengesRouter.post(
       })
       .returning();
 
-    return c.json(successResponse(rows[0]), 201);
+    return c.json(successResponse(rows[0] as Challenge), 201);
   }
 );
 
@@ -258,8 +262,7 @@ challengesRouter.put(
       .set({
         board_uuid:
           body.board_uuid !== undefined ? body.board_uuid : current.board_uuid,
-        level:
-          body.level !== undefined ? body.level : current.level,
+        level: body.level !== undefined ? body.level : current.level,
         difficulty: body.difficulty ?? current.difficulty,
         board: body.board ?? current.board,
         solution: body.solution ?? current.solution,
@@ -268,7 +271,7 @@ challengesRouter.put(
       .where(eq(challenges.uuid, uuid))
       .returning();
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Challenge));
   }
 );
 
@@ -300,7 +303,7 @@ challengesRouter.delete(
       return c.json(errorResponse("Challenge not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Challenge));
   }
 );
 

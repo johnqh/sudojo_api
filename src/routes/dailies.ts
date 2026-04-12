@@ -23,6 +23,7 @@ import {
   successResponse,
   errorResponse,
   scrambleBoard,
+  type Daily,
 } from "@sudobility/sudojo_types";
 
 const dailiesRouter = new Hono();
@@ -31,7 +32,7 @@ const dailiesRouter = new Hono();
  * Gets a random puzzle with level 3-5, scrambles it, and returns as a fallback daily.
  * Used when no daily puzzle exists for a requested date.
  */
-async function getRandomFallbackPuzzle(date: string) {
+async function getRandomFallbackPuzzle(date: string): Promise<Daily | null> {
   // Get all levels 3, 4, or 5
   const eligibleLevels = await db
     .select()
@@ -69,7 +70,7 @@ async function getRandomFallbackPuzzle(date: string) {
     const puzzle = anyPuzzleRows[0]!;
     const scrambled = scrambleBoard(puzzle.board, puzzle.solution);
 
-    return {
+    const fallbackDaily: Daily = {
       uuid: `fallback-${date}`,
       date,
       board_uuid: puzzle.uuid,
@@ -80,12 +81,13 @@ async function getRandomFallbackPuzzle(date: string) {
       created_at: null,
       updated_at: null,
     };
+    return fallbackDaily;
   }
 
   const puzzle = puzzleRows[0]!;
   const scrambled = scrambleBoard(puzzle.board, puzzle.solution);
 
-  return {
+  const fallbackDaily: Daily = {
     uuid: `fallback-${date}`,
     date,
     board_uuid: puzzle.uuid,
@@ -96,6 +98,7 @@ async function getRandomFallbackPuzzle(date: string) {
     created_at: null,
     updated_at: null,
   };
+  return fallbackDaily;
 }
 
 /**
@@ -108,7 +111,7 @@ async function getRandomFallbackPuzzle(date: string) {
  */
 dailiesRouter.get("/", async c => {
   const rows = await db.select().from(dailies).orderBy(desc(dailies.date));
-  return c.json(successResponse(rows));
+  return c.json(successResponse(rows as Daily[]));
 });
 
 /**
@@ -134,7 +137,7 @@ dailiesRouter.get("/today", async c => {
     return c.json(successResponse(fallback));
   }
 
-  return c.json(successResponse(rows[0]));
+  return c.json(successResponse(rows[0] as Daily));
 });
 
 /**
@@ -164,7 +167,7 @@ dailiesRouter.get(
       return c.json(successResponse(fallback));
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Daily));
   }
 );
 
@@ -186,7 +189,7 @@ dailiesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
     return c.json(errorResponse("Daily not found"), 404);
   }
 
-  return c.json(successResponse(rows[0]));
+  return c.json(successResponse(rows[0] as Daily));
 });
 
 /**
@@ -219,7 +222,7 @@ dailiesRouter.post(
       })
       .returning();
 
-    return c.json(successResponse(rows[0]), 201);
+    return c.json(successResponse(rows[0] as Daily), 201);
   }
 );
 
@@ -261,8 +264,7 @@ dailiesRouter.put(
         date: body.date ?? current.date,
         board_uuid:
           body.board_uuid !== undefined ? body.board_uuid : current.board_uuid,
-        level:
-          body.level !== undefined ? body.level : current.level,
+        level: body.level !== undefined ? body.level : current.level,
         techniques: body.techniques ?? current.techniques,
         board: body.board ?? current.board,
         solution: body.solution ?? current.solution,
@@ -271,7 +273,7 @@ dailiesRouter.put(
       .where(eq(dailies.uuid, uuid))
       .returning();
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Daily));
   }
 );
 
@@ -303,7 +305,7 @@ dailiesRouter.delete(
       return c.json(errorResponse("Daily not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Daily));
   }
 );
 

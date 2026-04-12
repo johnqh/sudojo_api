@@ -13,7 +13,7 @@ import {
  */
 export async function encryptSolutionsMiddleware(
   c: Context,
-  next: Next,
+  next: Next
 ): Promise<void | Response> {
   await next();
 

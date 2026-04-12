@@ -23,7 +23,11 @@ const BELT_NAMES = [
 ];
 
 // Games-played milestone names
-const GAMES_MILESTONES: Array<{ count: number; title: string; description: string }> = [
+const GAMES_MILESTONES: Array<{
+  count: number;
+  title: string;
+  description: string;
+}> = [
   { count: 5, title: "Getting Started", description: "Complete 5 puzzles" },
   { count: 10, title: "Warming Up", description: "Complete 10 puzzles" },
   { count: 25, title: "Apprentice", description: "Complete 25 puzzles" },
@@ -75,9 +79,13 @@ async function seedBadges() {
           requirementValue: milestone.count,
         })
         .onConflictDoNothing();
-      console.log(`  Created badge: games_${milestone.count} (${milestone.title})`);
+      console.log(
+        `  Created badge: games_${milestone.count} (${milestone.title})`
+      );
     } catch (_error) {
-      console.log(`  Badge games_${milestone.count} already exists, skipping...`);
+      console.log(
+        `  Badge games_${milestone.count} already exists, skipping...`
+      );
     }
   }
 

@@ -9,7 +9,11 @@ import { userIdParamSchema } from "../schemas";
 import { NONE_ENTITLEMENT } from "@sudobility/types";
 import { getSubscriptionHelper, getTestMode } from "../middleware/subscription";
 import { getUserInfo } from "../services/firebase";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  type SubscriptionResult,
+} from "@sudobility/sudojo_types";
 
 const usersRouter = new Hono();
 
@@ -71,10 +75,16 @@ usersRouter.get(
 
     try {
       const testMode = getTestMode(c);
-      const subscriptionInfo = await subHelper.getSubscriptionInfo(userId, testMode);
+      const subscriptionInfo = await subHelper.getSubscriptionInfo(
+        userId,
+        testMode
+      );
       // Transform to match the expected response format
+      // Date fields are serialized to ISO strings by c.json()
       const subscriptionResult = {
-        hasSubscription: subscriptionInfo.entitlements.length > 0 && !subscriptionInfo.entitlements.includes(NONE_ENTITLEMENT),
+        hasSubscription:
+          subscriptionInfo.entitlements.length > 0 &&
+          !subscriptionInfo.entitlements.includes(NONE_ENTITLEMENT),
         entitlements: subscriptionInfo.entitlements,
         subscriptionStartedAt: subscriptionInfo.subscriptionStartedAt,
         platform: subscriptionInfo.platform,
@@ -84,7 +94,7 @@ usersRouter.get(
         store: subscriptionInfo.store,
         willRenew: subscriptionInfo.willRenew,
         managementUrl: subscriptionInfo.managementUrl,
-      };
+      } as SubscriptionResult;
       return c.json(successResponse(subscriptionResult));
     } catch (error) {
       console.error("Error fetching subscription:", error);

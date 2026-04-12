@@ -25,14 +25,11 @@ export function encryptSolution(solution: string, keyHex: string): string {
  * Recursively walk an object/array and encrypt any `solution` string field.
  * Returns a new object (does not mutate the original).
  */
-export function encryptSolutionFields(
-  data: unknown,
-  keyHex: string,
-): unknown {
+export function encryptSolutionFields(data: unknown, keyHex: string): unknown {
   if (data === null || data === undefined) return data;
 
   if (Array.isArray(data)) {
-    return data.map((item) => encryptSolutionFields(item, keyHex));
+    return data.map(item => encryptSolutionFields(item, keyHex));
   }
 
   if (typeof data === "object") {

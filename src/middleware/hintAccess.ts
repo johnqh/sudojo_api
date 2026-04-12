@@ -96,7 +96,9 @@ export async function hintAccessMiddleware(c: Context, next: Next) {
             }
 
             // Check for blue_belt (mid tier - level 5 max)
-            if (subscriptionInfo.entitlements.includes(ENTITLEMENTS.BLUE_BELT)) {
+            if (
+              subscriptionInfo.entitlements.includes(ENTITLEMENTS.BLUE_BELT)
+            ) {
               hintAccess.maxHintLevel = HINT_LEVEL_LIMITS.blue_belt;
               hintAccess.userState = "insufficient_tier";
               c.set("hintAccess", hintAccess);

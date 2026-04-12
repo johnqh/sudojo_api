@@ -22,12 +22,15 @@ import {
   type GenerateData,
 } from "@sudobility/sudojo_types";
 import { db } from "../db";
-import { gameSessions, pointTransactions, userStats, techniques as techniquesTable } from "../db/schema";
+import {
+  gameSessions,
+  pointTransactions,
+  userStats,
+  techniques as techniquesTable,
+} from "../db/schema";
 import { hintTitleLocalization } from "../lib/localization";
 
-import {
-  hintAccessMiddleware,
-} from "../middleware/hintAccess";
+import { hintAccessMiddleware } from "../middleware/hintAccess";
 
 const solverRouter = new Hono();
 
@@ -57,7 +60,9 @@ async function proxySolverRequest<T>(
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.error(`[proxySolverRequest] Solver returned ${response.status} for ${endpoint}`);
+      console.error(
+        `[proxySolverRequest] Solver returned ${response.status} for ${endpoint}`
+      );
       throw new Error(`Solver service error: ${response.status}`);
     }
 
@@ -65,8 +70,12 @@ async function proxySolverRequest<T>(
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === "AbortError") {
-      console.error(`[proxySolverRequest] Solver request timed out after ${SOLVER_TIMEOUT_MS}ms for ${endpoint}`);
-      throw new Error(`Solver service timeout after ${SOLVER_TIMEOUT_MS / 1000}s`);
+      console.error(
+        `[proxySolverRequest] Solver request timed out after ${SOLVER_TIMEOUT_MS}ms for ${endpoint}`
+      );
+      throw new Error(
+        `Solver service timeout after ${SOLVER_TIMEOUT_MS / 1000}s`
+      );
     }
     console.error(`[proxySolverRequest] Failed to fetch ${endpoint}:`, err);
     throw err;
@@ -184,7 +193,8 @@ async function handleSolveRequest(c: Context) {
     // Get query params with defaults
     const original = c.req.query("original") ?? "";
     const user = c.req.query("user") ?? EMPTY_BOARD;
-    const autopencilmarks = c.req.query("autopencilmarks") ?? DEFAULT_AUTOPENCILMARKS;
+    const autopencilmarks =
+      c.req.query("autopencilmarks") ?? DEFAULT_AUTOPENCILMARKS;
     const pencilmarks = c.req.query("pencilmarks") ?? EMPTY_PENCILMARKS;
     const techniques = c.req.query("techniques");
 
@@ -192,7 +202,13 @@ async function handleSolveRequest(c: Context) {
 
     if (techniques) {
       // If technique is specified, try with technique first
-      result = await callSolver(original, user, autopencilmarks, pencilmarks, techniques);
+      result = await callSolver(
+        original,
+        user,
+        autopencilmarks,
+        pencilmarks,
+        techniques
+      );
 
       // If technique-filtered solve fails, or solve contains an auto pencilmark hint, fallback to generic solve
       if (!result.success || !result.data || result.data.hints?.level === 0) {
@@ -246,7 +262,10 @@ async function handleSolveRequest(c: Context) {
           | undefined;
         let textLoc: { stringKey: string; values: string[] } | undefined;
         if (existing && "stringKey" in existing && existing.stringKey) {
-          textLoc = { stringKey: existing.stringKey, values: existing.values ?? [] };
+          textLoc = {
+            stringKey: existing.stringKey,
+            values: existing.values ?? [],
+          };
         } else if (existing && "text" in existing && existing.text) {
           textLoc = existing.text;
         }
@@ -310,11 +329,17 @@ solverRouter.get("/validate", async c => {
     const original = c.req.query("original") ?? "";
 
     if (!original || original.length !== 81) {
-      return c.json(errorResponse("Invalid puzzle: original must be 81 characters"), 400);
+      return c.json(
+        errorResponse("Invalid puzzle: original must be 81 characters"),
+        400
+      );
     }
 
     const queryString = new URL(c.req.url).search.slice(1);
-    const result = await proxySolverRequest<ValidateData>("validate", queryString);
+    const result = await proxySolverRequest<ValidateData>(
+      "validate",
+      queryString
+    );
 
     if (!result.success || !result.data) {
       const errorMsg = result.error

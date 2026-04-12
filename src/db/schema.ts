@@ -26,21 +26,25 @@ export const levels = pgTable("levels", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
-export const techniques = pgTable("techniques", {
-  technique: integer("technique").primaryKey(),
-  level: integer("level").references(() => levels.level, {
-    onDelete: "cascade",
-  }),
-  title: varchar("title", { length: 255 }).notNull(),
-  path: varchar("path", { length: 255 }),
-  dependencies: text("dependencies"),
-  text: text("text"),
-  percentage: real("percentage"),
-  created_at: timestamp("created_at").defaultNow(),
-  updated_at: timestamp("updated_at").defaultNow(),
-}, (table) => ({
-  pathIdx: index("techniques_path_idx").on(table.path),
-}));
+export const techniques = pgTable(
+  "techniques",
+  {
+    technique: integer("technique").primaryKey(),
+    level: integer("level").references(() => levels.level, {
+      onDelete: "cascade",
+    }),
+    title: varchar("title", { length: 255 }).notNull(),
+    path: varchar("path", { length: 255 }),
+    dependencies: text("dependencies"),
+    text: text("text"),
+    percentage: real("percentage"),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  table => ({
+    pathIdx: index("techniques_path_idx").on(table.path),
+  })
+);
 
 export const learning = pgTable("learning", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
@@ -122,7 +126,9 @@ export const techniqueExamples = pgTable("technique_examples", {
   /** Solution for reference */
   solution: varchar("solution", { length: 81 }).notNull(),
   /** Bitfield of ALL techniques applicable at this board state */
-  techniques_bitfield: bigint("techniques_bitfield", { mode: "number" }).notNull(),
+  techniques_bitfield: bigint("techniques_bitfield", {
+    mode: "number",
+  }).notNull(),
   /** Primary technique (the one solver would use first) */
   primary_technique: integer("primary_technique").notNull(),
   /** Hint data (JSON with areas, cells, description) */
@@ -229,4 +235,3 @@ export const pointTransactions = pgTable("point_transactions", {
   metadata: jsonb("metadata"), // {level, puzzle_type, multipliers, etc.}
   createdAt: timestamp("created_at").defaultNow(),
 });
-

@@ -21,7 +21,13 @@ import {
   badgeDefinitions,
   pointTransactions,
 } from "../db/schema";
-import { successResponse, errorResponse, type LocalizedHint } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  type GameStartResponse,
+  type GameFinishResponse,
+  type NewBadge,
+} from "@sudobility/sudojo_types";
 import { badgeLocalization } from "../lib/localization";
 
 const playRouter = new Hono();
@@ -40,7 +46,9 @@ const NO_HINT_MULTIPLIER = 10;
 const NO_INTERRUPTION_MULTIPLIER = 2;
 
 /** Games-played badge milestones */
-const GAMES_MILESTONES = [5, 10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+const GAMES_MILESTONES = [
+  5, 10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000,
+];
 
 // =============================================================================
 // Helper Functions
@@ -81,10 +89,7 @@ async function getOrCreateUserStats(userId: string) {
   }
 
   // Create new user stats
-  const newStats = await db
-    .insert(userStats)
-    .values({ userId })
-    .returning();
+  const newStats = await db.insert(userStats).values({ userId }).returning();
 
   return newStats[0];
 }
@@ -98,8 +103,8 @@ async function checkAndAwardBadges(
   puzzleLevel: number,
   isPerfectPlay: boolean,
   newGamesCompleted: number
-): Promise<Array<{ badgeKey: string; title: string; description: string | null; localization?: { title?: LocalizedHint; description?: LocalizedHint } }>> {
-  const newBadges: Array<{ badgeKey: string; title: string; description: string | null; localization?: { title?: LocalizedHint; description?: LocalizedHint } }> = [];
+): Promise<NewBadge[]> {
+  const newBadges: NewBadge[] = [];
 
   // Get user's existing badges
   const existingBadges = await db
@@ -204,13 +209,12 @@ playRouter.post(
         })
         .returning();
 
-      return c.json(
-        successResponse({
-          sessionId: newSession[0].id,
-          startedAt: newSession[0].startedAt?.toISOString(),
-        }),
-        201
-      );
+      const startResponse: GameStartResponse = {
+        sessionId: newSession[0].id,
+        startedAt:
+          newSession[0].startedAt?.toISOString() ?? new Date().toISOString(),
+      };
+      return c.json(successResponse(startResponse), 201);
     } catch (error) {
       console.error("Error starting game session:", error);
       return c.json(errorResponse("Failed to start game session"), 500);
@@ -257,8 +261,11 @@ playRouter.post(
       // Calculate points (hint points are awarded separately via /solver/solve)
       const basePoints = calculateBasePoints(session.level);
       const noHintMultiplier = session.hintUsed ? 1 : NO_HINT_MULTIPLIER;
-      const noInterruptionMultiplier = interrupted ? 1 : NO_INTERRUPTION_MULTIPLIER;
-      const totalPoints = basePoints * noHintMultiplier * noInterruptionMultiplier;
+      const noInterruptionMultiplier = interrupted
+        ? 1
+        : NO_INTERRUPTION_MULTIPLIER;
+      const totalPoints =
+        basePoints * noHintMultiplier * noInterruptionMultiplier;
 
       // Determine if this is "perfect play" (no hints AND no interruption)
       const isPerfectPlay = !session.hintUsed && !interrupted;
@@ -320,16 +327,7 @@ playRouter.post(
       await db.delete(gameSessions).where(eq(gameSessions.userId, userId));
 
       // Build response with optional fields
-      const response: {
-        points: {
-          basePoints: number;
-          noHintMultiplier: number;
-          noInterruptionMultiplier: number;
-          totalPoints: number;
-        };
-        level?: { newUserLevel: number };
-        badges?: Array<{ badgeKey: string; title: string; description: string | null }>;
-      } = {
+      const response: GameFinishResponse = {
         points: {
           basePoints,
           noHintMultiplier,

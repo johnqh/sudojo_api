@@ -17,7 +17,14 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  type Board,
+  type BoardCountsData,
+  type BoardCountsByTechniqueData,
+  type UpdateStatsData,
+} from "@sudobility/sudojo_types";
 
 const boardsRouter = new Hono();
 
@@ -65,7 +72,9 @@ boardsRouter.get("/", async c => {
     if (!isNaN(techniquesNum)) {
       if (techniquesNum === 0) {
         // Include both 0 and NULL
-        query = query.where(sql`${boards.techniques} = 0 OR ${boards.techniques} IS NULL`);
+        query = query.where(
+          sql`${boards.techniques} = 0 OR ${boards.techniques} IS NULL`
+        );
       } else {
         query = query.where(eq(boards.techniques, techniquesNum));
       }
@@ -88,7 +97,7 @@ boardsRouter.get("/", async c => {
   }
 
   const rows = await query;
-  return c.json(successResponse(rows));
+  return c.json(successResponse(rows as Board[]));
 });
 
 /**
@@ -109,10 +118,11 @@ boardsRouter.get("/counts", async c => {
     .from(boards)
     .where(sql`${boards.techniques} = 0 OR ${boards.techniques} IS NULL`);
 
-  return c.json(successResponse({
+  const countsData: BoardCountsData = {
     total: totalResult?.count ?? 0,
     withoutTechniques: zeroTechniquesResult?.count ?? 0,
-  }));
+  };
+  return c.json(successResponse(countsData));
 });
 
 /**
@@ -125,7 +135,7 @@ boardsRouter.get("/counts", async c => {
  * @returns 200 - Record<number, number> mapping technique ID to count
  */
 boardsRouter.get("/counts/by-technique", async c => {
-  const counts: Record<number, number> = {};
+  const counts: BoardCountsByTechniqueData = {};
 
   // Query count for each technique bit (1-37)
   // TechniqueId enum goes from 1 (FULL_HOUSE) to 37 (MEDUSA_COLORING)
@@ -181,7 +191,7 @@ boardsRouter.get("/random", async c => {
     return c.json(errorResponse("No boards found"), 404);
   }
 
-  return c.json(successResponse(rows[0]));
+  return c.json(successResponse(rows[0] as Board));
 });
 
 /**
@@ -202,7 +212,7 @@ boardsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
     return c.json(errorResponse("Board not found"), 404);
   }
 
-  return c.json(successResponse(rows[0]));
+  return c.json(successResponse(rows[0] as Board));
 });
 
 /**
@@ -225,7 +235,8 @@ boardsRouter.post("/update-stats", adminMiddleware, async c => {
   const total = totalResult?.count ?? 0;
 
   if (total === 0) {
-    return c.json(successResponse({ levels: {}, techniques: {} }));
+    const emptyStats: UpdateStatsData = { levels: {}, techniques: {} };
+    return c.json(successResponse(emptyStats));
   }
 
   // Calculate level ratios
@@ -271,7 +282,11 @@ boardsRouter.post("/update-stats", adminMiddleware, async c => {
     }
   }
 
-  return c.json(successResponse({ levels: levelRatios, techniques: techniqueRatios }));
+  const statsData: UpdateStatsData = {
+    levels: levelRatios,
+    techniques: techniqueRatios,
+  };
+  return c.json(successResponse(statsData));
 });
 
 /**
@@ -303,7 +318,7 @@ boardsRouter.post(
       })
       .returning();
 
-    return c.json(successResponse(rows[0]), 201);
+    return c.json(successResponse(rows[0] as Board), 201);
   }
 );
 
@@ -342,8 +357,7 @@ boardsRouter.put(
     const rows = await db
       .update(boards)
       .set({
-        level:
-          body.level !== undefined ? body.level : current.level,
+        level: body.level !== undefined ? body.level : current.level,
         symmetrical: body.symmetrical ?? current.symmetrical,
         board: body.board ?? current.board,
         solution: body.solution ?? current.solution,
@@ -353,7 +367,7 @@ boardsRouter.put(
       .where(eq(boards.uuid, uuid))
       .returning();
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Board));
   }
 );
 
@@ -386,7 +400,7 @@ boardsRouter.delete(
       return c.json(errorResponse("Board not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Board));
   }
 );
 

@@ -21,7 +21,6 @@ import postgres from "postgres";
 import * as schema from "./schema";
 import { getRequiredEnv } from "../lib/env-helper";
 
-
 // Lazy initialization to allow test env to be applied first
 let _client: ReturnType<typeof postgres> | null = null;
 let _db: PostgresJsDatabase<typeof schema> | null = null;

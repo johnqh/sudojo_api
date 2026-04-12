@@ -4,17 +4,21 @@
  * Uses @sudobility/sudojo_ocr for consistent OCR across all platforms.
  */
 
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
-import Tesseract from 'tesseract.js';
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
+import Tesseract from "tesseract.js";
 import {
   extractSudokuFromImage,
   type TesseractModule,
   type CanvasAdapter,
-} from '@sudobility/sudojo_ocr';
-import { createNodeAdapter } from '@sudobility/sudojo_ocr/node';
-import { successResponse, errorResponse, type SolverBoard } from '@sudobility/sudojo_types';
+} from "@sudobility/sudojo_ocr";
+import { createNodeAdapter } from "@sudobility/sudojo_ocr/node";
+import {
+  successResponse,
+  errorResponse,
+  type OCRExtractData,
+} from "@sudobility/sudojo_types";
 
 const ocrRouter = new Hono();
 
@@ -33,15 +37,10 @@ const tesseractModule = Tesseract as unknown as TesseractModule;
 
 // Request validation schema
 const extractSchema = z.object({
-  image: z.string().min(1, 'Image data is required'),
+  image: z.string().min(1, "Image data is required"),
 });
 
-// Response type
-interface OCRExtractData {
-  board: SolverBoard;
-  confidence: number;
-  digitCount: number;
-}
+// OCRExtractData type imported from @sudobility/sudojo_types
 
 /**
  * POST /extract
@@ -55,36 +54,41 @@ interface OCRExtractData {
  * - confidence: OCR confidence score (0-100)
  * - digitCount: Number of digits recognized
  */
-ocrRouter.post('/extract', zValidator('json', extractSchema), async (c) => {
+ocrRouter.post("/extract", zValidator("json", extractSchema), async c => {
   try {
-    const { image } = c.req.valid('json');
+    const { image } = c.req.valid("json");
 
     // Convert base64 to buffer
     // Handle both raw base64 and data URL format
     let base64Data = image;
-    if (image.includes(',')) {
-      base64Data = image.split(',')[1] || image;
+    if (image.includes(",")) {
+      base64Data = image.split(",")[1] || image;
     }
 
-    const imageBuffer = Buffer.from(base64Data, 'base64');
+    const imageBuffer = Buffer.from(base64Data, "base64");
 
     // Get adapter
     const adapter = await getAdapter();
 
     // Run OCR
-    const result = await extractSudokuFromImage(adapter, imageBuffer, tesseractModule, {
-      skipBoardDetection: false,
-      preprocess: true,
-      minConfidence: 1,
-      cellMargin: 0.03,
-      recognizePencilmarks: true,
-    });
+    const result = await extractSudokuFromImage(
+      adapter,
+      imageBuffer,
+      tesseractModule,
+      {
+        skipBoardDetection: false,
+        preprocess: true,
+        minConfidence: 1,
+        cellMargin: 0.03,
+        recognizePencilmarks: true,
+      }
+    );
 
     // Validate result
     const puzzle = result.board.original;
     if (!puzzle || puzzle.length !== 81) {
       return c.json(
-        errorResponse('Could not extract a valid puzzle from the image'),
+        errorResponse("Could not extract a valid puzzle from the image"),
         400
       );
     }
@@ -92,7 +96,9 @@ ocrRouter.post('/extract', zValidator('json', extractSchema), async (c) => {
     // Check minimum clues
     if (result.digitCount < 17) {
       return c.json(
-        errorResponse(`Only ${result.digitCount} clues detected, minimum 17 required for a valid puzzle`),
+        errorResponse(
+          `Only ${result.digitCount} clues detected, minimum 17 required for a valid puzzle`
+        ),
         400
       );
     }
@@ -105,9 +111,11 @@ ocrRouter.post('/extract', zValidator('json', extractSchema), async (c) => {
 
     return c.json(successResponse(data));
   } catch (error) {
-    console.error('[OCR] Extraction failed:', error);
+    console.error("[OCR] Extraction failed:", error);
     return c.json(
-      errorResponse('Failed to process image. Please try again with a clearer photo.'),
+      errorResponse(
+        "Failed to process image. Please try again with a clearer photo."
+      ),
       500
     );
   }

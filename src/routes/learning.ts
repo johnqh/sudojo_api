@@ -18,7 +18,11 @@ import {
   uuidParamSchema,
 } from "../schemas";
 import { adminMiddleware } from "../middleware/auth";
-import { successResponse, errorResponse } from "@sudobility/sudojo_types";
+import {
+  successResponse,
+  errorResponse,
+  type Learning,
+} from "@sudobility/sudojo_types";
 import { learningLocalization } from "../lib/localization";
 
 const learningRouter = new Hono();
@@ -85,15 +89,26 @@ learningRouter.get("/", async c => {
   }
 
   // Look up technique paths for localization
-  const techniqueNumbers = [...new Set(rows.map(r => r.technique).filter((t): t is number => t !== null))];
-  const techPathRows = techniqueNumbers.length > 0
-    ? await db.select({ technique: techniques.technique, path: techniques.path }).from(techniques).where(inArray(techniques.technique, techniqueNumbers))
-    : [];
+  const techniqueNumbers = [
+    ...new Set(
+      rows.map(r => r.technique).filter((t): t is number => t !== null)
+    ),
+  ];
+  const techPathRows =
+    techniqueNumbers.length > 0
+      ? await db
+          .select({ technique: techniques.technique, path: techniques.path })
+          .from(techniques)
+          .where(inArray(techniques.technique, techniqueNumbers))
+      : [];
   const techPathMap = new Map(techPathRows.map(t => [t.technique, t.path]));
 
-  const withLocalization = rows.map(row => ({
+  const withLocalization: Learning[] = rows.map(row => ({
     ...row,
-    localization: learningLocalization(row.technique ? techPathMap.get(row.technique) ?? null : null, row.index),
+    localization: learningLocalization(
+      row.technique ? (techPathMap.get(row.technique) ?? null) : null,
+      row.index
+    ),
   }));
   return c.json(successResponse(withLocalization));
 });
@@ -129,10 +144,11 @@ learningRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
     }
   }
 
-  return c.json(successResponse({
+  const learningItem: Learning = {
     ...row,
     localization: learningLocalization(techniquePath, row.index),
-  }));
+  };
+  return c.json(successResponse(learningItem));
 });
 
 /**
@@ -165,7 +181,7 @@ learningRouter.post(
 
     const rows = await db.insert(learning).values(insertValues).returning();
 
-    return c.json(successResponse(rows[0]), 201);
+    return c.json(successResponse(rows[0] as Learning), 201);
   }
 );
 
@@ -215,7 +231,7 @@ learningRouter.put(
       .where(eq(learning.uuid, uuid))
       .returning();
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Learning));
   }
 );
 
@@ -247,7 +263,7 @@ learningRouter.delete(
       return c.json(errorResponse("Learning entry not found"), 404);
     }
 
-    return c.json(successResponse(rows[0]));
+    return c.json(successResponse(rows[0] as Learning));
   }
 );
 
