@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.118",
+  "version": "1.0.119",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -13,7 +13,7 @@
     "clean": "rm -rf dist",
     "test": "vitest run tests/unit",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "bun test --preload ./tests/setup.ts tests/levels tests/boards tests/techniques tests/learning tests/dailies tests/challenges tests/auth tests/solver",
+    "test:integration": "test -f .env.test || (echo 'ERROR: .env.test is missing — refusing to run integration tests against production database' && exit 1) && bun test --preload ./tests/setup.ts tests/levels tests/boards tests/techniques tests/learning tests/dailies tests/challenges tests/auth tests/solver",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src",

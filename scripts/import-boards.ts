@@ -1,30 +1,25 @@
+/**
+ * Import boards from MySQL dump into PostgreSQL.
+ *
+ * Both MySQL and PostgreSQL use the same convention:
+ *   board    = puzzle (givens + zeros for blanks)
+ *   solution = solved cells only (zeros where givens are)
+ *
+ * Usage: bun run scripts/import-boards.ts [path-to-sql-dump]
+ */
+
 import { db, boards } from "../src/db";
 import { sql } from "drizzle-orm";
 
-const file = Bun.file("/Users/johnhuang/sudoku_dump/db_sudoku_sudokuservice_boards.sql");
-const content = await file.text();
+const dumpPath =
+  process.argv[2] ||
+  "/Users/johnhuang/Documents/dumps/db_sudoku_sudokuservice_boards.sql";
 
-// First, build a mapping from old level_uuid to level number
-const levelsFile = Bun.file("/Users/johnhuang/sudoku_dump/db_sudoku_sudokuservice_levels.sql");
-const levelsContent = await levelsFile.text();
+const content = await Bun.file(dumpPath).text();
 
-const levelUuidToIndex: Record<string, number> = {};
-const levelsInsertMatch = levelsContent.match(/INSERT INTO `sudokuservice_levels` VALUES (.+);/s);
-if (levelsInsertMatch) {
-  const levelsRegex = /\((\d+),'([^']+)',(\d+),'([^']+)',(?:'([^']*)'|NULL),(\d+),(\d+),([^,]+),([^)]+)\)/g;
-  let levelMatch;
-  while ((levelMatch = levelsRegex.exec(levelsInsertMatch[1])) !== null) {
-    const [, , uuid, index, , , , status] = levelMatch;
-    if (status === "1") {
-      levelUuidToIndex[uuid] = parseInt(index);
-    }
-  }
-}
-
-console.log(`Built level UUID mapping with ${Object.keys(levelUuidToIndex).length} levels`);
-
-// Extract the INSERT statement values
-const insertMatch = content.match(/INSERT INTO `sudokuservice_boards` VALUES (.+);/s);
+const insertMatch = content.match(
+  /INSERT INTO `sudokuservice_boards` VALUES (.+);/s
+);
 if (!insertMatch) {
   console.error("Could not find INSERT statement");
   process.exit(1);
@@ -32,59 +27,57 @@ if (!insertMatch) {
 
 const valuesStr = insertMatch[1];
 
-// Parse the values - format: (id,'uuid','level_uuid','board','solution',symmetrical,status,'create_time','update_time',techniques)
 const records: Array<{
   uuid: string;
-  level: number | null;
   board: string;
   solution: string;
   symmetrical: boolean;
-  techniques: number;
 }> = [];
 
-// Split by ),( but need to handle it carefully
-const regex = /\((\d+),'([^']+)','([^']*)','([^']+)','([^']+)',(\d+),(\d+),([^,]+),([^,]+),(\d+)\)/g;
+const regex =
+  /\((\d+),'([^']+)','([^']*)','([^']+)','([^']+)',(\d+),(\d+),([^,]+),([^,]+),(\d+)\)/g;
 let match;
 
 while ((match = regex.exec(valuesStr)) !== null) {
-  const [, , uuid, level_uuid, board, solution, symmetrical, status, , , techniques] = match;
+  const [, , uuid, , mysqlBoard, mysqlSolution, symmetrical, status] = match;
 
   // Only import active records (status = 1)
-  if (status === "1") {
-    // Map level_uuid to level (integer)
-    const level = level_uuid ? levelUuidToIndex[level_uuid] ?? null : null;
+  if (status !== "1") continue;
 
-    records.push({
-      uuid,
-      level,
-      board,
-      solution,
-      symmetrical: symmetrical === "1",
-      techniques: parseInt(techniques),
-    });
-  }
+  records.push({
+    uuid,
+    board: mysqlBoard,
+    solution: mysqlSolution,
+    symmetrical: symmetrical === "1",
+  });
 }
 
 console.log(`Found ${records.length} active board records to import`);
 
-// Insert in batches
+if (records.length === 0) {
+  console.log("No records to import");
+  process.exit(0);
+}
+
+// Insert in batches (no level or techniques)
 const BATCH_SIZE = 500;
 let imported = 0;
 
 for (let i = 0; i < records.length; i += BATCH_SIZE) {
   const batch = records.slice(i, i + BATCH_SIZE);
 
-  await db.insert(boards).values(batch).onConflictDoUpdate({
-    target: boards.uuid,
-    set: {
-      level: sql`EXCLUDED.level`,
-      board: sql`EXCLUDED.board`,
-      solution: sql`EXCLUDED.solution`,
-      symmetrical: sql`EXCLUDED.symmetrical`,
-      techniques: sql`EXCLUDED.techniques`,
-      updated_at: new Date(),
-    },
-  });
+  await db
+    .insert(boards)
+    .values(batch)
+    .onConflictDoUpdate({
+      target: boards.uuid,
+      set: {
+        board: sql`EXCLUDED.board`,
+        solution: sql`EXCLUDED.solution`,
+        symmetrical: sql`EXCLUDED.symmetrical`,
+        updated_at: new Date(),
+      },
+    });
 
   imported += batch.length;
   console.log(`Imported ${imported}/${records.length} boards`);

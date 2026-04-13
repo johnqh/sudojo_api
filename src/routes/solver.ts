@@ -11,7 +11,7 @@
 
 import { Hono, type Context } from "hono";
 import { eq } from "drizzle-orm";
-import { getRequiredEnv } from "../lib/env-helper";
+import { getRequiredEnv, getEnv } from "../lib/env-helper";
 import {
   successResponse,
   errorResponse,
@@ -42,14 +42,16 @@ interface SolverResponse<T> {
   data: T | null;
 }
 
-// Timeout for solver requests (120 seconds)
-const SOLVER_TIMEOUT_MS = 120000;
+// Timeout for solver requests. Defaults to 60 seconds and can be overridden
+// with SOLVER_TIMEOUT_MS for environments that need a longer budget.
+const SOLVER_TIMEOUT_MS = parseInt(getEnv("SOLVER_TIMEOUT_MS", "60000")!, 10);
 
 async function proxySolverRequest<T>(
   endpoint: string,
   queryString: string
 ): Promise<SolverResponse<T>> {
   const url = `${SOLVER_URL}/api/${endpoint}${queryString ? `?${queryString}` : ""}`;
+  const startedAt = Date.now();
 
   // Create abort controller for timeout
   const controller = new AbortController();
@@ -69,12 +71,13 @@ async function proxySolverRequest<T>(
     return response.json() as Promise<SolverResponse<T>>;
   } catch (err) {
     clearTimeout(timeoutId);
+    const elapsedMs = Date.now() - startedAt;
     if (err instanceof Error && err.name === "AbortError") {
       console.error(
-        `[proxySolverRequest] Solver request timed out after ${SOLVER_TIMEOUT_MS}ms for ${endpoint}`
+        `[proxySolverRequest] Solver request timed out after ${elapsedMs}ms (configured ${SOLVER_TIMEOUT_MS}ms) for ${endpoint}`
       );
       throw new Error(
-        `Solver service timeout after ${SOLVER_TIMEOUT_MS / 1000}s`
+        `Solver service timeout after ${Math.round(elapsedMs / 1000)}s`
       );
     }
     console.error(`[proxySolverRequest] Failed to fetch ${endpoint}:`, err);

@@ -19,7 +19,9 @@
       "Bash(mkdir:*)",
       "Bash(npx vitest:*)",
       "Bash(npx tsx:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(kill %1)",
+      "Bash(git:*)"
     ]
   }
 }
