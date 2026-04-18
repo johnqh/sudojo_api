@@ -139,13 +139,12 @@ boardsRouter.get("/counts/by-technique", async c => {
 
   // Query count for each technique bit (1-37)
   // TechniqueId enum goes from 1 (FULL_HOUSE) to 37 (MEDUSA_COLORING)
+  // Use PostgreSQL native bit shift to avoid JavaScript Number precision loss
   for (let technique = 1; technique <= 37; technique++) {
-    // Use BigInt to avoid 32-bit overflow for techniques >= 32
-    const bit = Number(BigInt(1) << BigInt(technique));
     const [result] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(boards)
-      .where(sql`(${boards.techniques} & ${bit}) != 0`);
+      .where(sql`(${boards.techniques} & (1::bigint << ${technique})) != 0`);
     counts[technique] = result?.count ?? 0;
   }
 
@@ -263,13 +262,14 @@ boardsRouter.post("/update-stats", adminMiddleware, async c => {
   }
 
   // Calculate technique ratios (techniques 1-60)
+  // Use PostgreSQL native bit shift to avoid JavaScript Number precision loss
+  // for technique IDs >= 53 (where 2^t exceeds Number.MAX_SAFE_INTEGER)
   const techniqueRatios: Record<number, number> = {};
   for (let t = 1; t <= 60; t++) {
-    const bit = Number(BigInt(1) << BigInt(t));
     const [result] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(boards)
-      .where(sql`(${boards.techniques} & ${bit}) != 0`);
+      .where(sql`(${boards.techniques} & (1::bigint << ${t})) != 0`);
     const count = result?.count ?? 0;
     if (count > 0) {
       const ratio = count / total;
