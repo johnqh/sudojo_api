@@ -10,6 +10,7 @@ import {
   type HintEntitlement,
   HINT_LEVEL_LIMITS,
 } from "@sudobility/sudojo_types";
+import { getEnv } from "../lib/env-helper";
 
 /** Entitlement identifiers */
 const ENTITLEMENTS = {
@@ -53,6 +54,18 @@ export async function hintAccessMiddleware(c: Context, next: Next) {
     isAuthenticated: false,
     entitlements: [],
   };
+
+  // API key bypass: unlimited hint access for scripts/tools
+  const apiKey = c.req.header("X-API-Key") ?? c.req.query("api_key");
+  const configuredKey = getEnv("ADMIN_API_KEY");
+  if (configuredKey && apiKey === configuredKey) {
+    hintAccess.maxHintLevel = Infinity;
+    hintAccess.userState = "anonymous";
+    hintAccess.isAuthenticated = false;
+    c.set("hintAccess", hintAccess);
+    await next();
+    return;
+  }
 
   if (authHeader) {
     const [type, token] = authHeader.split(" ");
