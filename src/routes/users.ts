@@ -225,13 +225,27 @@ usersRouter.delete(
     // Delete Firebase user and revoke OAuth tokens
     try {
       const appleConfig = getAppleSignInConfig();
-      await deleteUserAccount(userId, {
+      const result = await deleteUserAccount(userId, {
         googleAccessToken,
         appleAuthorizationCode,
         appleConfig: appleConfig ?? undefined,
       });
+
+      if (result.googleTokenRevoked === false) {
+        console.error(
+          `[DeleteAccount] Google token revocation failed for user ${userId}`
+        );
+      }
+      if (result.appleTokenRevoked === false) {
+        console.error(
+          `[DeleteAccount] Apple token revocation failed for user ${userId}`
+        );
+      }
     } catch (error) {
-      console.error("Error deleting Firebase user:", error);
+      console.error(
+        `[DeleteAccount] Error deleting Firebase user ${userId}:`,
+        error
+      );
       // Account is already marked as deleted in DB, so we don't revert
       // The Firebase user may need manual cleanup
     }
