@@ -8,6 +8,8 @@ import {
   getUserInfo as getFirebaseUserInfo,
   isSiteAdmin,
   isAnonymousUser,
+  deleteUserAccount as deleteFirebaseUserAccount,
+  type AppleSignInConfig,
 } from "@sudobility/auth_service";
 import { getRequiredEnv, getEnv } from "../lib/env-helper";
 
@@ -34,3 +36,21 @@ export async function verifyIdToken(token: string) {
 // Re-export helpers
 export { isSiteAdmin, isAnonymousUser };
 export { getFirebaseUserInfo as getUserInfo };
+export { deleteFirebaseUserAccount as deleteUserAccount };
+
+/**
+ * Get Apple Sign In configuration from environment variables.
+ * Returns null if not configured.
+ */
+export function getAppleSignInConfig(): AppleSignInConfig | null {
+  const clientId = getEnv("APPLE_CLIENT_ID");
+  const teamId = getEnv("APPLE_TEAM_ID");
+  const keyId = getEnv("APPLE_KEY_ID");
+  const privateKey = getEnv("APPLE_PRIVATE_KEY");
+
+  if (!clientId || !teamId || !keyId || !privateKey) {
+    return null;
+  }
+
+  return { clientId, teamId, keyId, privateKey };
+}

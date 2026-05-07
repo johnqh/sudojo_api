@@ -294,6 +294,11 @@ export async function initGamificationTables() {
     )
   `;
 
+  // Migration: add status column to user_stats for account deletion
+  await client`
+    ALTER TABLE user_stats ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'active'
+  `;
+
   // Badge definitions table
   await client`
     CREATE TABLE IF NOT EXISTS badge_definitions (

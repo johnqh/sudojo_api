@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.123",
+  "version": "1.0.124",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -36,11 +36,11 @@
   "dependencies": {
     "@hono/zod-validator": "^0.7.5",
     "@napi-rs/canvas": "^0.1.68",
-    "@sudobility/auth_service": "^1.1.16",
-    "@sudobility/subscription_service": "^1.0.18",
+    "@sudobility/auth_service": "^1.1.17",
+    "@sudobility/subscription_service": "^1.0.19",
     "@sudobility/sudojo_ocr": "^1.1.23",
-    "@sudobility/sudojo_types": "^1.2.49",
-    "@sudobility/types": "^1.9.61",
+    "@sudobility/sudojo_types": "^1.2.50",
+    "@sudobility/types": "^1.9.62",
     "drizzle-orm": "^0.45.0",
     "firebase-admin": "^13.6.0",
     "hono": "^4.10.7",

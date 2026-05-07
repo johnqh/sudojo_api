@@ -178,6 +178,7 @@ export const userStats = pgTable("user_stats", {
   totalPoints: bigint("total_points", { mode: "number" }).notNull().default(0),
   userLevel: integer("user_level").notNull().default(0),
   gamesCompleted: integer("games_completed").notNull().default(0),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
