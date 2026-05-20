@@ -199,6 +199,10 @@ techniquesRouter.put(
         text: body.text ?? current.text,
         percentage:
           body.percentage !== undefined ? body.percentage : current.percentage,
+        dependencies:
+          body.dependencies !== undefined
+            ? body.dependencies
+            : current.dependencies,
         updated_at: new Date(),
       })
       .where(eq(techniques.technique, technique))

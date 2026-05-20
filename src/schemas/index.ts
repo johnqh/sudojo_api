@@ -39,6 +39,7 @@ export const techniqueUpdateSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   text: z.string().nullish(),
   percentage: z.number().min(0).max(1).nullish(),
+  dependencies: z.string().nullish(),
 });
 
 export const techniqueParamSchema = z.object({
