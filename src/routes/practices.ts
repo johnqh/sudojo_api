@@ -97,68 +97,7 @@ practicesRouter.get(
       );
     }
 
-    const practice = rows[0] as TechniquePractice;
-
-    // Call solver live to get fresh hint data with all detailed steps
-    try {
-      const autopencilmarks = practice.pencilmarks ? "false" : "true";
-      const pencilmarks = practice.pencilmarks ?? EMPTY_PENCILMARKS;
-      const result = await callSolver(
-        practice.board,
-        practice.board,
-        autopencilmarks,
-        pencilmarks,
-        technique.toString()
-      );
-
-      if (result.success && result.data?.hints?.steps?.length) {
-        // Look up technique path for title localization
-        const techRows = await db
-          .select({ path: techniques.path })
-          .from(techniques)
-          .where(eq(techniques.technique, technique));
-        const techniquePath = techRows[0]?.path ?? null;
-        const titleLoc = hintTitleLocalization(techniquePath);
-
-        // Add title localization to each step and restructure text localization
-        const steps = result.data.hints.steps.map((step: SolverHintStep) => {
-          const existing = step.localization as
-            | { stringKey?: string; values?: string[] }
-            | { text?: { stringKey: string; values: string[] } }
-            | undefined;
-          let textLoc: { stringKey: string; values: string[] } | undefined;
-          if (existing && "stringKey" in existing && existing.stringKey) {
-            textLoc = {
-              stringKey: existing.stringKey,
-              values: existing.values ?? [],
-            };
-          } else if (existing && "text" in existing && existing.text) {
-            textLoc = existing.text;
-          }
-
-          return {
-            ...step,
-            localization: {
-              ...(textLoc ? { text: textLoc } : {}),
-              ...(titleLoc ? { title: titleLoc } : {}),
-            },
-          };
-        });
-
-        practice.hint_data = JSON.stringify({
-          ...result.data.hints,
-          steps,
-        });
-      }
-    } catch (err) {
-      // Solver unavailable — fall back to stored hint_data
-      console.warn(
-        "[practices] Solver call failed, using stored hint_data:",
-        err
-      );
-    }
-
-    return c.json(successResponse(practice));
+    return c.json(successResponse(rows[0] as TechniquePractice));
   }
 );
 
@@ -283,5 +222,100 @@ practicesRouter.delete(
     return c.json(successResponse(rows[0] as TechniquePractice));
   }
 );
+
+/**
+ * POST /api/v1/practices/regenerate-hints
+ *
+ * Regenerate hint_data for all practices by calling the solver.
+ * Updates each practice's stored hint_data with fresh solver output
+ * including all detailed steps. Requires admin authentication.
+ *
+ * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
+ * @returns 200 - { updated, failed, total }
+ */
+practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
+  const allPractices = await db.select().from(techniquePractices);
+
+  // Cache technique paths
+  const techRows = await db
+    .select({ technique: techniques.technique, path: techniques.path })
+    .from(techniques);
+  const techPathMap = new Map(techRows.map(r => [r.technique, r.path]));
+
+  let updated = 0;
+  let failed = 0;
+
+  for (const practice of allPractices) {
+    try {
+      const autopencilmarks = practice.pencilmarks ? "false" : "true";
+      const pencilmarks = practice.pencilmarks ?? EMPTY_PENCILMARKS;
+      const result = await callSolver(
+        practice.board,
+        practice.board,
+        autopencilmarks,
+        pencilmarks,
+        practice.technique!.toString()
+      );
+
+      if (!result.success || !result.data?.hints?.steps?.length) {
+        console.warn(
+          `[regenerate] Solver returned no steps for ${practice.uuid}`
+        );
+        failed++;
+        continue;
+      }
+
+      const techniquePath = techPathMap.get(practice.technique!) ?? null;
+      const titleLoc = hintTitleLocalization(techniquePath);
+
+      const steps = result.data.hints.steps.map((step: SolverHintStep) => {
+        const existing = step.localization as
+          | { stringKey?: string; values?: string[] }
+          | { text?: { stringKey: string; values: string[] } }
+          | undefined;
+        let textLoc: { stringKey: string; values: string[] } | undefined;
+        if (existing && "stringKey" in existing && existing.stringKey) {
+          textLoc = {
+            stringKey: existing.stringKey,
+            values: existing.values ?? [],
+          };
+        } else if (existing && "text" in existing && existing.text) {
+          textLoc = existing.text;
+        }
+
+        return {
+          ...step,
+          localization: {
+            ...(textLoc ? { text: textLoc } : {}),
+            ...(titleLoc ? { title: titleLoc } : {}),
+          },
+        };
+      });
+
+      const hintData = JSON.stringify({
+        ...result.data.hints,
+        steps,
+      });
+
+      await db
+        .update(techniquePractices)
+        .set({ hint_data: hintData })
+        .where(eq(techniquePractices.uuid, practice.uuid));
+
+      updated++;
+    } catch (err) {
+      console.error(`[regenerate] Failed for ${practice.uuid}:`, err);
+      failed++;
+    }
+  }
+
+  return c.json(
+    successResponse({
+      updated,
+      failed,
+      total: allPractices.length,
+    })
+  );
+});
 
 export default practicesRouter;
