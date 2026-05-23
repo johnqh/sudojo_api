@@ -21,11 +21,17 @@ import { adminMiddleware } from "../middleware/auth";
 import {
   successResponse,
   errorResponse,
+  EMPTY_PENCILMARKS,
   type TechniquePractice,
   type TechniquePracticeCountItem,
+  type SolverHintStep,
   type PracticesBulkDeleteData,
 } from "@sudobility/sudojo_types";
-import { techniqueTitleLocalization } from "../lib/localization";
+import {
+  techniqueTitleLocalization,
+  hintTitleLocalization,
+} from "../lib/localization";
+import { callSolver } from "../services/solver-proxy";
 
 const practicesRouter = new Hono();
 
@@ -91,7 +97,68 @@ practicesRouter.get(
       );
     }
 
-    return c.json(successResponse(rows[0] as TechniquePractice));
+    const practice = rows[0] as TechniquePractice;
+
+    // Call solver live to get fresh hint data with all detailed steps
+    try {
+      const autopencilmarks = practice.pencilmarks ? "false" : "true";
+      const pencilmarks = practice.pencilmarks ?? EMPTY_PENCILMARKS;
+      const result = await callSolver(
+        practice.board,
+        practice.board,
+        autopencilmarks,
+        pencilmarks,
+        technique.toString()
+      );
+
+      if (result.success && result.data?.hints?.steps?.length) {
+        // Look up technique path for title localization
+        const techRows = await db
+          .select({ path: techniques.path })
+          .from(techniques)
+          .where(eq(techniques.technique, technique));
+        const techniquePath = techRows[0]?.path ?? null;
+        const titleLoc = hintTitleLocalization(techniquePath);
+
+        // Add title localization to each step and restructure text localization
+        const steps = result.data.hints.steps.map((step: SolverHintStep) => {
+          const existing = step.localization as
+            | { stringKey?: string; values?: string[] }
+            | { text?: { stringKey: string; values: string[] } }
+            | undefined;
+          let textLoc: { stringKey: string; values: string[] } | undefined;
+          if (existing && "stringKey" in existing && existing.stringKey) {
+            textLoc = {
+              stringKey: existing.stringKey,
+              values: existing.values ?? [],
+            };
+          } else if (existing && "text" in existing && existing.text) {
+            textLoc = existing.text;
+          }
+
+          return {
+            ...step,
+            localization: {
+              ...(textLoc ? { text: textLoc } : {}),
+              ...(titleLoc ? { title: titleLoc } : {}),
+            },
+          };
+        });
+
+        practice.hint_data = JSON.stringify({
+          ...result.data.hints,
+          steps,
+        });
+      }
+    } catch (err) {
+      // Solver unavailable — fall back to stored hint_data
+      console.warn(
+        "[practices] Solver call failed, using stored hint_data:",
+        err
+      );
+    }
+
+    return c.json(successResponse(practice));
   }
 );
 

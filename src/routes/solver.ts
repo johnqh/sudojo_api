@@ -11,13 +11,13 @@
 
 import { Hono, type Context } from "hono";
 import { eq } from "drizzle-orm";
-import { getRequiredEnv, getEnv } from "../lib/env-helper";
 import {
   successResponse,
   errorResponse,
   EMPTY_BOARD,
   EMPTY_PENCILMARKS,
   type SolveData,
+  type SolverHintStep,
   type ValidateData,
   type GenerateData,
 } from "@sudobility/sudojo_types";
@@ -29,83 +29,18 @@ import {
   techniques as techniquesTable,
 } from "../db/schema";
 import { hintTitleLocalization } from "../lib/localization";
+import {
+  proxySolverRequest,
+  callSolver,
+  type SolverResponse,
+} from "../services/solver-proxy";
 
 import { hintAccessMiddleware } from "../middleware/hintAccess";
 
 const solverRouter = new Hono();
 
-const SOLVER_URL = getRequiredEnv("SOLVER_URL");
-
-interface SolverResponse<T> {
-  success: boolean;
-  error: { code: string; message: string } | null;
-  data: T | null;
-}
-
-// Timeout for solver requests. Defaults to 60 seconds and can be overridden
-// with SOLVER_TIMEOUT_MS for environments that need a longer budget.
-const SOLVER_TIMEOUT_MS = parseInt(getEnv("SOLVER_TIMEOUT_MS", "60000")!, 10);
-
-async function proxySolverRequest<T>(
-  endpoint: string,
-  queryString: string
-): Promise<SolverResponse<T>> {
-  const url = `${SOLVER_URL}/api/${endpoint}${queryString ? `?${queryString}` : ""}`;
-  const startedAt = Date.now();
-
-  // Create abort controller for timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), SOLVER_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      console.error(
-        `[proxySolverRequest] Solver returned ${response.status} for ${endpoint}`
-      );
-      throw new Error(`Solver service error: ${response.status}`);
-    }
-
-    return response.json() as Promise<SolverResponse<T>>;
-  } catch (err) {
-    clearTimeout(timeoutId);
-    const elapsedMs = Date.now() - startedAt;
-    if (err instanceof Error && err.name === "AbortError") {
-      console.error(
-        `[proxySolverRequest] Solver request timed out after ${elapsedMs}ms (configured ${SOLVER_TIMEOUT_MS}ms) for ${endpoint}`
-      );
-      throw new Error(
-        `Solver service timeout after ${Math.round(elapsedMs / 1000)}s`
-      );
-    }
-    console.error(`[proxySolverRequest] Failed to fetch ${endpoint}:`, err);
-    throw err;
-  }
-}
-
 // Default autopencilmarks setting
 const DEFAULT_AUTOPENCILMARKS = "false";
-
-// Helper to call solver with given params
-async function callSolver(
-  original: string,
-  user: string,
-  autopencilmarks: string,
-  pencilmarks: string,
-  techniques?: string
-): Promise<SolverResponse<SolveData>> {
-  const params = new URLSearchParams();
-  params.set("original", original);
-  params.set("user", user);
-  params.set("autopencilmarks", autopencilmarks);
-  params.set("pencilmarks", pencilmarks);
-  if (techniques) {
-    params.set("techniques", techniques);
-  }
-  return proxySolverRequest<SolveData>("solve", params.toString());
-}
 
 /**
  * Track hint usage for gamification when user has an active session.
@@ -257,30 +192,32 @@ async function handleSolveRequest(c: Context) {
       const techniquePath = techRows[0]?.path ?? null;
       const titleLoc = hintTitleLocalization(techniquePath);
 
-      result.data.hints.steps = result.data.hints.steps.map(step => {
-        // Transform flat localization from solver into structured format
-        const existing = step.localization as
-          | { stringKey?: string; values?: string[] }
-          | { text?: { stringKey: string; values: string[] } }
-          | undefined;
-        let textLoc: { stringKey: string; values: string[] } | undefined;
-        if (existing && "stringKey" in existing && existing.stringKey) {
-          textLoc = {
-            stringKey: existing.stringKey,
-            values: existing.values ?? [],
-          };
-        } else if (existing && "text" in existing && existing.text) {
-          textLoc = existing.text;
-        }
+      result.data.hints.steps = result.data.hints.steps.map(
+        (step: SolverHintStep) => {
+          // Transform flat localization from solver into structured format
+          const existing = step.localization as
+            | { stringKey?: string; values?: string[] }
+            | { text?: { stringKey: string; values: string[] } }
+            | undefined;
+          let textLoc: { stringKey: string; values: string[] } | undefined;
+          if (existing && "stringKey" in existing && existing.stringKey) {
+            textLoc = {
+              stringKey: existing.stringKey,
+              values: existing.values ?? [],
+            };
+          } else if (existing && "text" in existing && existing.text) {
+            textLoc = existing.text;
+          }
 
-        return {
-          ...step,
-          localization: {
-            ...(textLoc ? { text: textLoc } : {}),
-            ...(titleLoc ? { title: titleLoc } : {}),
-          },
-        };
-      });
+          return {
+            ...step,
+            localization: {
+              ...(textLoc ? { text: textLoc } : {}),
+              ...(titleLoc ? { title: titleLoc } : {}),
+            },
+          };
+        }
+      );
     }
 
     // Add points info to response if awarded
