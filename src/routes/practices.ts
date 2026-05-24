@@ -243,8 +243,8 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
   const techPathMap = new Map(techRows.map(r => [r.technique, r.path]));
 
   let updated = 0;
-  let deleted = 0;
-  let failed = 0;
+  const failures: { uuid: string; technique: number | null; reason: string }[] =
+    [];
 
   for (const practice of allPractices) {
     try {
@@ -258,14 +258,26 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
         practice.technique!.toString()
       );
 
-      if (!result.success || !result.data?.hints?.steps?.length) {
+      if (!result.success) {
+        const msg = result.error?.message ?? "Solver returned failure";
+        console.warn(`[regenerate] Failed ${practice.uuid}: ${msg}`);
+        failures.push({
+          uuid: practice.uuid,
+          technique: practice.technique,
+          reason: msg,
+        });
+        continue;
+      }
+
+      if (!result.data?.hints?.steps?.length) {
         console.warn(
-          `[regenerate] Removing practice ${practice.uuid}: success=${result.success}, steps=${result.data?.hints?.steps?.length ?? 0}`
+          `[regenerate] No steps for ${practice.uuid} (technique ${practice.technique})`
         );
-        await db
-          .delete(techniquePractices)
-          .where(eq(techniquePractices.uuid, practice.uuid));
-        deleted++;
+        failures.push({
+          uuid: practice.uuid,
+          technique: practice.technique,
+          reason: "Solver returned no steps",
+        });
         continue;
       }
 
@@ -308,18 +320,25 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
 
       updated++;
     } catch (err) {
-      // Network/timeout error — don't delete, solver may be temporarily unavailable
-      console.error(`[regenerate] Solver error for ${practice.uuid}:`, err);
-      failed++;
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      console.error(
+        `[regenerate] Error for ${practice.uuid} (technique ${practice.technique}):`,
+        msg
+      );
+      failures.push({
+        uuid: practice.uuid,
+        technique: practice.technique,
+        reason: msg,
+      });
     }
   }
 
   return c.json(
     successResponse({
       updated,
-      deleted,
-      failed,
+      failed: failures.length,
       total: allPractices.length,
+      failures,
     })
   );
 });
