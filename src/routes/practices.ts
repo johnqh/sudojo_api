@@ -11,7 +11,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { eq, sql } from "drizzle-orm";
-import { db, techniquePractices, techniques } from "../db";
+import { db, techniquePractices, techniqueExamples, techniques } from "../db";
 import {
   techniquePracticeCreateSchema,
   uuidParamSchema,
@@ -226,62 +226,75 @@ practicesRouter.delete(
 /**
  * POST /api/v1/practices/regenerate-hints
  *
- * Regenerate hint_data for all practices by calling the solver.
- * Updates each practice's stored hint_data with fresh solver output
+ * Regenerate hint_data for all examples and practices by calling the solver.
+ * Updates each row's stored hint_data with fresh solver output
  * including all detailed steps. Requires admin authentication.
  *
  * @auth Admin (Firebase token + SITEADMIN_EMAILS check)
- * @returns 200 - { updated, failed, total }
+ * @returns 200 - { examples: { updated, failed, total }, practices: { updated, failed, total }, failures }
  */
 practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
-  const allPractices = await db.select().from(techniquePractices);
-
   // Cache technique paths
   const techRows = await db
     .select({ technique: techniques.technique, path: techniques.path })
     .from(techniques);
   const techPathMap = new Map(techRows.map(r => [r.technique, r.path]));
 
-  let updated = 0;
-  const failures: { uuid: string; technique: number | null; reason: string }[] =
-    [];
+  const failures: {
+    uuid: string;
+    table: string;
+    technique: number | null;
+    reason: string;
+  }[] = [];
 
-  for (const practice of allPractices) {
+  // Helper to regenerate hint_data for a single row
+  const regenerateRow = async (
+    row: {
+      uuid: string;
+      board: string;
+      pencilmarks: string | null;
+      technique: number;
+    },
+    table: string,
+    updateFn: (uuid: string, hintData: string) => Promise<void>
+  ): Promise<boolean> => {
     try {
-      const autopencilmarks = practice.pencilmarks ? "false" : "true";
-      const pencilmarks = practice.pencilmarks ?? EMPTY_PENCILMARKS;
+      const autopencilmarks = row.pencilmarks ? "false" : "true";
+      const pencilmarks = row.pencilmarks ?? EMPTY_PENCILMARKS;
       const result = await callSolver(
-        practice.board,
-        practice.board,
+        row.board,
+        row.board,
         autopencilmarks,
         pencilmarks,
-        practice.technique!.toString()
+        row.technique.toString()
       );
 
       if (!result.success) {
         const msg = result.error?.message ?? "Solver returned failure";
-        console.warn(`[regenerate] Failed ${practice.uuid}: ${msg}`);
+        console.warn(`[regenerate] Failed ${table} ${row.uuid}: ${msg}`);
         failures.push({
-          uuid: practice.uuid,
-          technique: practice.technique,
+          uuid: row.uuid,
+          table,
+          technique: row.technique,
           reason: msg,
         });
-        continue;
+        return false;
       }
 
       if (!result.data?.hints?.steps?.length) {
         console.warn(
-          `[regenerate] No steps for ${practice.uuid} (technique ${practice.technique})`
+          `[regenerate] No steps for ${table} ${row.uuid} (technique ${row.technique})`
         );
         failures.push({
-          uuid: practice.uuid,
-          technique: practice.technique,
+          uuid: row.uuid,
+          table,
+          technique: row.technique,
           reason: "Solver returned no steps",
         });
-        continue;
+        return false;
       }
 
-      const techniquePath = techPathMap.get(practice.technique!) ?? null;
+      const techniquePath = techPathMap.get(row.technique) ?? null;
       const titleLoc = hintTitleLocalization(techniquePath);
 
       const steps = result.data.hints.steps.map((step: SolverHintStep) => {
@@ -313,31 +326,85 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
         steps,
       });
 
-      await db
-        .update(techniquePractices)
-        .set({ hint_data: hintData })
-        .where(eq(techniquePractices.uuid, practice.uuid));
-
-      updated++;
+      await updateFn(row.uuid, hintData);
+      return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       console.error(
-        `[regenerate] Error for ${practice.uuid} (technique ${practice.technique}):`,
+        `[regenerate] Error for ${table} ${row.uuid} (technique ${row.technique}):`,
         msg
       );
       failures.push({
-        uuid: practice.uuid,
-        technique: practice.technique,
+        uuid: row.uuid,
+        table,
+        technique: row.technique,
         reason: msg,
       });
+      return false;
     }
+  };
+
+  // Regenerate technique_examples
+  const allExamples = await db.select().from(techniqueExamples);
+  let examplesUpdated = 0;
+
+  for (const example of allExamples) {
+    const success = await regenerateRow(
+      {
+        uuid: example.uuid,
+        board: example.board,
+        pencilmarks: example.pencilmarks,
+        technique: example.primary_technique,
+      },
+      "technique_examples",
+      async (uuid, hintData) => {
+        await db
+          .update(techniqueExamples)
+          .set({ hint_data: hintData })
+          .where(eq(techniqueExamples.uuid, uuid));
+      }
+    );
+    if (success) examplesUpdated++;
+  }
+
+  // Regenerate technique_practices
+  const allPractices = await db.select().from(techniquePractices);
+  let practicesUpdated = 0;
+
+  for (const practice of allPractices) {
+    const success = await regenerateRow(
+      {
+        uuid: practice.uuid,
+        board: practice.board,
+        pencilmarks: practice.pencilmarks,
+        technique: practice.technique!,
+      },
+      "technique_practices",
+      async (uuid, hintData) => {
+        await db
+          .update(techniquePractices)
+          .set({ hint_data: hintData })
+          .where(eq(techniquePractices.uuid, uuid));
+      }
+    );
+    if (success) practicesUpdated++;
   }
 
   return c.json(
     successResponse({
-      updated,
+      examples: {
+        updated: examplesUpdated,
+        failed: allExamples.length - examplesUpdated,
+        total: allExamples.length,
+      },
+      practices: {
+        updated: practicesUpdated,
+        failed: allPractices.length - practicesUpdated,
+        total: allPractices.length,
+      },
+      updated: examplesUpdated + practicesUpdated,
       failed: failures.length,
-      total: allPractices.length,
+      total: allExamples.length + allPractices.length,
       failures,
     })
   );
