@@ -258,13 +258,9 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
         practice.technique!.toString()
       );
 
-      if (
-        !result.success ||
-        !result.data?.hints?.steps?.length ||
-        result.data.hints.technique !== practice.technique
-      ) {
+      if (!result.success || !result.data?.hints?.steps?.length) {
         console.warn(
-          `[regenerate] Removing practice ${practice.uuid}: success=${result.success}, steps=${result.data?.hints?.steps?.length ?? 0}, technique=${result.data?.hints?.technique ?? "?"} (expected ${practice.technique})`
+          `[regenerate] Removing practice ${practice.uuid}: success=${result.success}, steps=${result.data?.hints?.steps?.length ?? 0}`
         );
         await db
           .delete(techniquePractices)
@@ -312,15 +308,9 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
 
       updated++;
     } catch (err) {
-      console.error(`[regenerate] Failed for ${practice.uuid}, deleting:`, err);
-      try {
-        await db
-          .delete(techniquePractices)
-          .where(eq(techniquePractices.uuid, practice.uuid));
-        deleted++;
-      } catch {
-        failed++;
-      }
+      // Network/timeout error — don't delete, solver may be temporarily unavailable
+      console.error(`[regenerate] Solver error for ${practice.uuid}:`, err);
+      failed++;
     }
   }
 
