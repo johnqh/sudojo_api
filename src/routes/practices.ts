@@ -259,8 +259,11 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
 
       if (!result.success || !result.data?.hints?.steps?.length) {
         console.warn(
-          `[regenerate] Solver returned no steps for ${practice.uuid}`
+          `[regenerate] Solver returned no steps for ${practice.uuid}, deleting`
         );
+        await db
+          .delete(techniquePractices)
+          .where(eq(techniquePractices.uuid, practice.uuid));
         failed++;
         continue;
       }
@@ -304,7 +307,14 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
 
       updated++;
     } catch (err) {
-      console.error(`[regenerate] Failed for ${practice.uuid}:`, err);
+      console.error(`[regenerate] Failed for ${practice.uuid}, deleting:`, err);
+      try {
+        await db
+          .delete(techniquePractices)
+          .where(eq(techniquePractices.uuid, practice.uuid));
+      } catch {
+        /* ignore delete error */
+      }
       failed++;
     }
   }
