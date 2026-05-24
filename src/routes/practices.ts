@@ -243,6 +243,7 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
   const techPathMap = new Map(techRows.map(r => [r.technique, r.path]));
 
   let updated = 0;
+  let deleted = 0;
   let failed = 0;
 
   for (const practice of allPractices) {
@@ -257,14 +258,18 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
         practice.technique!.toString()
       );
 
-      if (!result.success || !result.data?.hints?.steps?.length) {
+      if (
+        !result.success ||
+        !result.data?.hints?.steps?.length ||
+        result.data.hints.technique !== practice.technique
+      ) {
         console.warn(
-          `[regenerate] Solver returned no steps for ${practice.uuid}, deleting`
+          `[regenerate] Removing practice ${practice.uuid}: success=${result.success}, steps=${result.data?.hints?.steps?.length ?? 0}, technique=${result.data?.hints?.technique ?? "?"} (expected ${practice.technique})`
         );
         await db
           .delete(techniquePractices)
           .where(eq(techniquePractices.uuid, practice.uuid));
-        failed++;
+        deleted++;
         continue;
       }
 
@@ -312,16 +317,17 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
         await db
           .delete(techniquePractices)
           .where(eq(techniquePractices.uuid, practice.uuid));
+        deleted++;
       } catch {
-        /* ignore delete error */
+        failed++;
       }
-      failed++;
     }
   }
 
   return c.json(
     successResponse({
       updated,
+      deleted,
       failed,
       total: allPractices.length,
     })
