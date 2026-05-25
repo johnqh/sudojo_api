@@ -25,6 +25,7 @@ export async function proxySolverRequest<T>(
   queryString: string
 ): Promise<SolverResponse<T>> {
   const url = `${SOLVER_URL}/api/${endpoint}${queryString ? `?${queryString}` : ""}`;
+  console.log(`[proxySolverRequest] ${url}`);
   const startedAt = Date.now();
 
   // Create abort controller for timeout

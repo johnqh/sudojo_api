@@ -11,7 +11,13 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { eq, sql } from "drizzle-orm";
-import { db, techniquePractices, techniqueExamples, techniques } from "../db";
+import {
+  db,
+  boards,
+  techniquePractices,
+  techniqueExamples,
+  techniques,
+} from "../db";
 import {
   techniquePracticeCreateSchema,
   uuidParamSchema,
@@ -22,6 +28,7 @@ import {
   successResponse,
   errorResponse,
   EMPTY_PENCILMARKS,
+  hasPencilmarkContent,
   type TechniquePractice,
   type TechniquePracticeCountItem,
   type SolverHintStep,
@@ -251,6 +258,7 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
   const regenerateRow = async (
     row: {
       uuid: string;
+      original: string;
       board: string;
       pencilmarks: string | null;
       technique: number;
@@ -259,13 +267,13 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
     updateFn: (uuid: string, hintData: string) => Promise<void>
   ): Promise<boolean> => {
     try {
-      const autopencilmarks = row.pencilmarks ? "false" : "true";
-      const pencilmarks = row.pencilmarks ?? EMPTY_PENCILMARKS;
+      const hasPencilmarks =
+        row.pencilmarks != null && hasPencilmarkContent(row.pencilmarks);
       const result = await callSolver(
+        row.original,
         row.board,
-        row.board,
-        autopencilmarks,
-        pencilmarks,
+        "false",
+        hasPencilmarks ? row.pencilmarks! : EMPTY_PENCILMARKS,
         row.technique.toString()
       );
 
@@ -344,14 +352,33 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
     }
   };
 
-  // Regenerate technique_examples
-  const allExamples = await db.select().from(techniqueExamples);
+  // Regenerate technique_examples (join with source board for original puzzle)
+  const allExamples = await db
+    .select({
+      uuid: techniqueExamples.uuid,
+      board: techniqueExamples.board,
+      pencilmarks: techniqueExamples.pencilmarks,
+      primary_technique: techniqueExamples.primary_technique,
+      source_board: boards.board,
+    })
+    .from(techniqueExamples)
+    .leftJoin(boards, eq(techniqueExamples.source_board_uuid, boards.uuid));
   let examplesUpdated = 0;
 
   for (const example of allExamples) {
+    if (!example.source_board) {
+      failures.push({
+        uuid: example.uuid,
+        table: "technique_examples",
+        technique: example.primary_technique,
+        reason: "No source board found",
+      });
+      continue;
+    }
     const success = await regenerateRow(
       {
         uuid: example.uuid,
+        original: example.source_board,
         board: example.board,
         pencilmarks: example.pencilmarks,
         technique: example.primary_technique,
@@ -375,6 +402,7 @@ practicesRouter.post("/regenerate-hints", adminMiddleware, async c => {
     const success = await regenerateRow(
       {
         uuid: practice.uuid,
+        original: practice.board,
         board: practice.board,
         pencilmarks: practice.pencilmarks,
         technique: practice.technique!,
