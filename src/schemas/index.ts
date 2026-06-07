@@ -134,6 +134,7 @@ export const communityCreateSchema = z.object({
   url: z.string().min(1),
   platform: z.string().min(1).max(50),
   sort_order: z.number().int().optional().default(0),
+  icon_url: z.string().nullish(),
 });
 
 export const communityUpdateSchema = z.object({
@@ -144,6 +145,7 @@ export const communityUpdateSchema = z.object({
   url: z.string().min(1).optional(),
   platform: z.string().min(1).max(50).optional(),
   sort_order: z.number().int().optional(),
+  icon_url: z.string().nullish(),
 });
 
 // UUID param schema

@@ -243,6 +243,7 @@ export const communities = pgTable(
     url: text("url").notNull(),
     platform: varchar("platform", { length: 50 }).notNull(),
     sort_order: integer("sort_order").default(0),
+    icon_url: text("icon_url"),
     created_at: timestamp("created_at").defaultNow(),
     updated_at: timestamp("updated_at").defaultNow(),
   },

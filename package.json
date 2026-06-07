@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.144",
+  "version": "1.0.145",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -38,8 +38,8 @@
     "@napi-rs/canvas": "^0.1.68",
     "@sudobility/auth_service": "^1.1.17",
     "@sudobility/subscription_service": "^1.0.19",
-    "@sudobility/sudojo_ocr": "^1.1.32",
-    "@sudobility/sudojo_types": "^1.2.57",
+    "@sudobility/sudojo_ocr": "^1.1.33",
+    "@sudobility/sudojo_types": "^1.2.58",
     "@sudobility/types": "^1.9.62",
     "drizzle-orm": "^0.45.0",
     "firebase-admin": "^13.6.0",

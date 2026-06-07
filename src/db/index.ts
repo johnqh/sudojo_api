@@ -268,6 +268,11 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS communities_language_code_idx ON communities(language_code)
   `;
 
+  // Migration: add icon_url column to communities
+  await client`
+    ALTER TABLE communities ADD COLUMN IF NOT EXISTS icon_url TEXT
+  `;
+
   console.log("Database tables initialized");
 }
 

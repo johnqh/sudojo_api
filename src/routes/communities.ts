@@ -112,6 +112,7 @@ communitiesRouter.post(
         url: body.url,
         platform: body.platform,
         sort_order: body.sort_order ?? 0,
+        icon_url: body.icon_url ?? null,
       })
       .returning();
 
@@ -162,6 +163,8 @@ communitiesRouter.put(
         platform: body.platform ?? current.platform,
         sort_order:
           body.sort_order !== undefined ? body.sort_order : current.sort_order,
+        icon_url:
+          body.icon_url !== undefined ? body.icon_url : current.icon_url,
         updated_at: new Date(),
       })
       .where(eq(communities.uuid, uuid))
