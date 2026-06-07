@@ -125,6 +125,27 @@ export const challengeUpdateSchema = z.object({
   solution: z.string().length(81).optional(),
 });
 
+// Community schemas
+export const communityCreateSchema = z.object({
+  language_code: z.string().min(2).max(10),
+  name: z.string().min(1).max(500),
+  name_english: z.string().max(500).nullish(),
+  description: z.string().min(1),
+  url: z.string().min(1),
+  platform: z.string().min(1).max(50),
+  sort_order: z.number().int().optional().default(0),
+});
+
+export const communityUpdateSchema = z.object({
+  language_code: z.string().min(2).max(10).optional(),
+  name: z.string().min(1).max(500).optional(),
+  name_english: z.string().max(500).nullish(),
+  description: z.string().min(1).optional(),
+  url: z.string().min(1).optional(),
+  platform: z.string().min(1).max(50).optional(),
+  sort_order: z.number().int().optional(),
+});
+
 // UUID param schema
 export const uuidParamSchema = z.object({
   uuid: z.string().uuid(),

@@ -227,6 +227,30 @@ export const gameSessions = pgTable("game_sessions", {
   puzzleId: varchar("puzzle_id", { length: 100 }), // date for daily, uuid for level
 });
 
+// =============================================================================
+// Communities Table
+// =============================================================================
+
+/** Curated Sudoku community/forum, language-specific (different records per language) */
+export const communities = pgTable(
+  "communities",
+  {
+    uuid: uuid("uuid").primaryKey().defaultRandom(),
+    language_code: varchar("language_code", { length: 10 }).notNull(),
+    name: varchar("name", { length: 500 }).notNull(),
+    name_english: varchar("name_english", { length: 500 }),
+    description: text("description").notNull(),
+    url: text("url").notNull(),
+    platform: varchar("platform", { length: 50 }).notNull(),
+    sort_order: integer("sort_order").default(0),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  table => ({
+    languageIdx: index("communities_language_code_idx").on(table.language_code),
+  })
+);
+
 /** Point transaction history - audit trail for all point changes */
 export const pointTransactions = pgTable("point_transactions", {
   id: uuid("id").primaryKey().defaultRandom(),

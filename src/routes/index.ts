@@ -17,6 +17,7 @@
  * - practices: Practice puzzle CRUD (public read, admin write)
  * - play: Game session management (Firebase auth required)
  * - gamification: Stats, badges, point history (public badges, auth for stats)
+ * - communities: Curated Sudoku communities/forums (public read, admin write)
  * - ocr: Sudoku image extraction (public)
  */
 
@@ -34,6 +35,7 @@ import practicesRouter from "./practices";
 import playRouter from "./play";
 import gamificationRouter from "./gamification";
 import ocrRouter from "./ocr";
+import communitiesRouter from "./communities";
 
 const routes = new Hono();
 
@@ -50,5 +52,6 @@ routes.route("/practices", practicesRouter);
 routes.route("/play", playRouter);
 routes.route("/gamification", gamificationRouter);
 routes.route("/ocr", ocrRouter);
+routes.route("/communities", communitiesRouter);
 
 export default routes;

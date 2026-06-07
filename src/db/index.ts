@@ -249,6 +249,25 @@ export async function initDatabase() {
     )
   `;
 
+  await client`
+    CREATE TABLE IF NOT EXISTS communities (
+      uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      language_code VARCHAR(10) NOT NULL,
+      name VARCHAR(500) NOT NULL,
+      name_english VARCHAR(500),
+      description TEXT NOT NULL,
+      url TEXT NOT NULL,
+      platform VARCHAR(50) NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
+  await client`
+    CREATE INDEX IF NOT EXISTS communities_language_code_idx ON communities(language_code)
+  `;
+
   console.log("Database tables initialized");
 }
 
