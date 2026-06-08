@@ -152,6 +152,7 @@ techniquesRouter.post(
         title: body.title,
         text: body.text,
         percentage: body.percentage ?? null,
+        strategy_id: body.strategy_id ?? null,
       })
       .returning();
 
@@ -203,6 +204,10 @@ techniquesRouter.put(
           body.dependencies !== undefined
             ? body.dependencies
             : current.dependencies,
+        strategy_id:
+          body.strategy_id !== undefined
+            ? body.strategy_id
+            : current.strategy_id,
         updated_at: new Date(),
       })
       .where(eq(techniques.technique, technique))

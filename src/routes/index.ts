@@ -18,6 +18,7 @@
  * - play: Game session management (Firebase auth required)
  * - gamification: Stats, badges, point history (public badges, auth for stats)
  * - communities: Curated Sudoku communities/forums (public read, admin write)
+ * - strategies: Solving strategy groups (public read, admin write)
  * - ocr: Sudoku image extraction (public)
  */
 
@@ -36,11 +37,13 @@ import playRouter from "./play";
 import gamificationRouter from "./gamification";
 import ocrRouter from "./ocr";
 import communitiesRouter from "./communities";
+import strategiesRouter from "./strategies";
 
 const routes = new Hono();
 
 routes.route("/levels", levelsRouter);
 routes.route("/techniques", techniquesRouter);
+routes.route("/strategies", strategiesRouter);
 routes.route("/learning", learningRouter);
 routes.route("/boards", boardsRouter);
 routes.route("/dailies", dailiesRouter);

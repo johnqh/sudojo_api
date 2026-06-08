@@ -26,12 +26,23 @@ export const levels = pgTable("levels", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
+export const strategies = pgTable("strategies", {
+  strategy: integer("strategy").primaryKey().generatedAlwaysAsIdentity(),
+  difficulty: integer("difficulty").unique().notNull(),
+  stub: varchar("stub", { length: 255 }).unique().notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
 export const techniques = pgTable(
   "techniques",
   {
     technique: integer("technique").primaryKey(),
     level: integer("level").references(() => levels.level, {
       onDelete: "cascade",
+    }),
+    strategy_id: integer("strategy_id").references(() => strategies.strategy, {
+      onDelete: "set null",
     }),
     title: varchar("title", { length: 255 }).notNull(),
     path: varchar("path", { length: 255 }),

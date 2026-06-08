@@ -32,6 +32,7 @@ export const techniqueCreateSchema = z.object({
   title: z.string().min(1).max(255),
   text: z.string().nullish().default(""),
   percentage: z.number().min(0).max(1).nullish(),
+  strategy_id: z.number().int().min(1).nullish(),
 });
 
 export const techniqueUpdateSchema = z.object({
@@ -40,6 +41,7 @@ export const techniqueUpdateSchema = z.object({
   text: z.string().nullish(),
   percentage: z.number().min(0).max(1).nullish(),
   dependencies: z.string().nullish(),
+  strategy_id: z.number().int().min(1).nullish(),
 });
 
 export const techniqueParamSchema = z.object({
@@ -123,6 +125,25 @@ export const challengeUpdateSchema = z.object({
   difficulty: z.number().int().min(1).max(10).optional(),
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
+});
+
+// Strategy schemas
+export const strategyCreateSchema = z.object({
+  difficulty: z.number().int().min(1),
+  stub: z.string().min(1).max(255),
+});
+
+export const strategyUpdateSchema = z.object({
+  difficulty: z.number().int().min(1).optional(),
+  stub: z.string().min(1).max(255).optional(),
+});
+
+export const strategyParamSchema = z.object({
+  strategy: z.coerce.number().int().min(1),
+});
+
+export const strategyStubParamSchema = z.object({
+  stub: z.string().min(1).max(255),
 });
 
 // Community schemas

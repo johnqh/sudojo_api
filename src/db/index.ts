@@ -92,6 +92,17 @@ export async function initDatabase() {
     )
   `;
 
+  // Strategies table (must be created before techniques FK migration)
+  await client`
+    CREATE TABLE IF NOT EXISTS strategies (
+      strategy SERIAL PRIMARY KEY,
+      difficulty INTEGER UNIQUE NOT NULL,
+      stub VARCHAR(255) UNIQUE NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
   await client`
     CREATE TABLE IF NOT EXISTS techniques (
       technique INTEGER PRIMARY KEY,
@@ -158,6 +169,53 @@ export async function initDatabase() {
   await client`
     ALTER TABLE techniques ALTER COLUMN percentage TYPE REAL
   `;
+
+  // Migration: add strategy_id FK column to techniques
+  await client`
+    ALTER TABLE techniques ADD COLUMN IF NOT EXISTS strategy_id INTEGER REFERENCES strategies(strategy) ON DELETE SET NULL
+  `;
+
+  // Seed strategies (idempotent)
+  await client`
+    INSERT INTO strategies (difficulty, stub) VALUES
+      (1, 'naked-subsets'),
+      (2, 'hidden-subsets'),
+      (3, 'locked-candidates'),
+      (4, 'basic-fish'),
+      (5, 'finned-sashimi-fish'),
+      (6, 'franken-fish'),
+      (7, 'single-digit-patterns'),
+      (8, 'wings'),
+      (9, 'unique-rectangles'),
+      (10, 'coloring'),
+      (11, 'remote-pairs'),
+      (12, 'almost-locked-sets'),
+      (13, 'bug-plus-one'),
+      (14, 'firework'),
+      (15, 'single-digit-chains'),
+      (16, 'multi-digit-chains'),
+      (17, 'forcing')
+    ON CONFLICT (stub) DO NOTHING
+  `;
+
+  // Seed technique → strategy mappings (idempotent: only updates null rows)
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'naked-subsets') WHERE technique IN (3, 5, 8, 10) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'hidden-subsets') WHERE technique IN (1, 2, 4, 7, 9) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'locked-candidates') WHERE technique IN (6) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'basic-fish') WHERE technique IN (11, 12, 13, 16) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'finned-sashimi-fish') WHERE technique IN (15, 17, 18, 22, 51, 52, 53) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'franken-fish') WHERE technique IN (57, 58, 59) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'single-digit-patterns') WHERE technique IN (24, 25, 26, 38) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'wings') WHERE technique IN (14, 19, 20, 28, 44, 45, 46, 47) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'unique-rectangles') WHERE technique IN (30, 31, 39, 40, 41, 50, 54) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'coloring') WHERE technique IN (27, 37) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'remote-pairs') WHERE technique IN (29) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'almost-locked-sets') WHERE technique IN (21, 23, 33, 34, 56) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'bug-plus-one') WHERE technique IN (32) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'firework') WHERE technique IN (55) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'single-digit-chains') WHERE technique IN (35, 42, 60) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'multi-digit-chains') WHERE technique IN (43, 48) AND strategy_id IS NULL`;
+  await client`UPDATE techniques SET strategy_id = (SELECT strategy FROM strategies WHERE stub = 'forcing') WHERE technique IN (36, 49) AND strategy_id IS NULL`;
 
   await client`
     CREATE TABLE IF NOT EXISTS learning (
