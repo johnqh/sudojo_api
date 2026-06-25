@@ -7,12 +7,22 @@
  * Usage: bun run scripts/export-technique-fixtures.ts
  */
 
-import { db, techniquePractices, techniques } from "../src/db";
+import {
+  db,
+  techniquePractices,
+  techniqueExamples,
+  boards,
+  techniques,
+} from "../src/db";
 import { eq, sql } from "drizzle-orm";
 
 interface TechniqueFixture {
   technique: number;
   technique_title: string;
+  // Original givens, emitted only when they differ from `board` (the current/solved
+  // state). Some techniques - Avoidable Rectangle especially - need the given vs
+  // solved distinction; the test reads `original` as the puzzle and `board` as user.
+  original?: string;
   board: string;
   pencilmarks: string | null;
   solution: string;
@@ -33,22 +43,40 @@ async function exportFixtures() {
   const missing: string[] = [];
 
   for (const tech of allTechniques) {
-    // Get one random practice for this technique
+    // Get one random practice for this technique, joining back to the source
+    // example -> source board to recover the original givens (the practice `board`
+    // is the current/solved state).
     const practices = await db
-      .select()
+      .select({
+        board: techniquePractices.board,
+        pencilmarks: techniquePractices.pencilmarks,
+        solution: techniquePractices.solution,
+        original: boards.board,
+      })
       .from(techniquePractices)
+      .leftJoin(
+        techniqueExamples,
+        eq(techniquePractices.source_example_uuid, techniqueExamples.uuid)
+      )
+      .leftJoin(boards, eq(techniqueExamples.source_board_uuid, boards.uuid))
       .where(eq(techniquePractices.technique, tech.technique))
       .orderBy(sql`RANDOM()`)
       .limit(1);
 
     if (practices.length > 0) {
-      fixtures.push({
+      const p = practices[0];
+      const fixture: TechniqueFixture = {
         technique: tech.technique,
         technique_title: tech.title,
-        board: practices[0].board,
-        pencilmarks: practices[0].pencilmarks,
-        solution: practices[0].solution,
-      });
+        board: p.board,
+        pencilmarks: p.pencilmarks,
+        solution: p.solution,
+      };
+      // Only carry `original` when the givens actually differ from the board.
+      if (p.original && p.original !== p.board) {
+        fixture.original = p.original;
+      }
+      fixtures.push(fixture);
       console.log(`  [${tech.technique}] ${tech.title}: found practice`);
     } else {
       missing.push(`${tech.technique} (${tech.title})`);

@@ -137,10 +137,11 @@ boardsRouter.get("/counts", async c => {
 boardsRouter.get("/counts/by-technique", async c => {
   const counts: BoardCountsByTechniqueData = {};
 
-  // Query count for each technique bit (1-37)
-  // TechniqueId enum goes from 1 (FULL_HOUSE) to 37 (MEDUSA_COLORING)
+  // Query count for each technique bit (1-60)
+  // TechniqueId enum goes from 1 (FULL_HOUSE) to 60 (GROUPED_X_CYCLES)
   // Use PostgreSQL native bit shift to avoid JavaScript Number precision loss
-  for (let technique = 1; technique <= 37; technique++) {
+  // for technique IDs >= 53 (where 2^t exceeds Number.MAX_SAFE_INTEGER)
+  for (let technique = 1; technique <= 60; technique++) {
     const [result] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(boards)
