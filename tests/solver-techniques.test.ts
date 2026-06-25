@@ -101,12 +101,12 @@ describe("Solver Technique Tests", () => {
 
   describe("Technique coverage", () => {
     it("should have fixtures for all expected techniques", () => {
-      // We expect 37 techniques (1-37)
-      expect(fixtures.length).toBe(37);
+      // We expect 60 techniques (1-60)
+      expect(fixtures.length).toBe(60);
 
       // Verify all technique IDs are present
       const techniqueIds = fixtures.map((f) => f.technique).sort((a, b) => a - b);
-      const expectedIds = Array.from({ length: 37 }, (_, i) => i + 1);
+      const expectedIds = Array.from({ length: 60 }, (_, i) => i + 1);
       expect(techniqueIds).toEqual(expectedIds);
     });
   });
