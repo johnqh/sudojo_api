@@ -36,27 +36,55 @@ const CONCURRENCY = Math.max(1, numArg("--concurrency", 8));
 
 interface ValidateResponse {
   success: boolean;
+  error?: { code?: string; message?: string } | null;
   data: {
     board: { level: number; techniques: number; difficulty_score?: number };
   } | null;
 }
 
-async function validateBoard(
-  original: string
-): Promise<{ level: number; techniques: number; difficulty_score: number } | null> {
-  try {
-    const response = await fetch(`${SOLVER_URL}/api/validate?original=${original}`);
-    if (!response.ok) return null;
-    const result = (await response.json()) as ValidateResponse;
-    if (!result.success || !result.data) return null;
-    return {
-      level: result.data.board.level,
-      techniques: result.data.board.techniques,
-      difficulty_score: result.data.board.difficulty_score ?? 0,
-    };
-  } catch {
-    return null;
+type ValidateOk = { level: number; techniques: number; difficulty_score: number };
+type ValidateResult = ValidateOk | { error: string };
+const isOk = (r: ValidateResult): r is ValidateOk => "difficulty_score" in r;
+
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+// Retries transient failures (network error, HTTP 5xx) a few times. Returns a
+// definitive { error } only for real problems: 4xx, a validate error (e.g. the
+// puzzle is not solvable by the rule techniques), or techniques === 0.
+async function validateBoard(original: string): Promise<ValidateResult> {
+  const url = `${SOLVER_URL}/api/validate?original=${original}`;
+  const MAX_ATTEMPTS = 4;
+  let lastErr = "unknown";
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        lastErr = `http ${response.status}`;
+        if (response.status >= 500) {
+          await sleep(250 * attempt);
+          continue; // transient server error -> retry
+        }
+        return { error: lastErr }; // 4xx -> definitive
+      }
+      const result = (await response.json()) as ValidateResponse;
+      if (!result.success || !result.data) {
+        return { error: `validate ${result.error?.code ?? "no-data"}` };
+      }
+      const b = result.data.board;
+      if (!(b.techniques > 0)) {
+        return { error: "techniques=0 (not rule-solvable)" };
+      }
+      return {
+        level: b.level,
+        techniques: b.techniques,
+        difficulty_score: b.difficulty_score ?? 0,
+      };
+    } catch (e) {
+      lastErr = `fetch ${(e as Error)?.message ?? e}`;
+      await sleep(250 * attempt); // transient network error -> retry
+    }
   }
+  return { error: lastErr };
 }
 
 async function main() {
@@ -77,8 +105,8 @@ async function main() {
     .limit(1);
   if (probe.length) {
     const r = await validateBoard(probe[0].board);
-    if (!r) {
-      console.error("ABORT: probe /validate call failed. Is SOLVER_URL reachable?");
+    if (!isOk(r)) {
+      console.error(`ABORT: probe /validate call failed (${r.error}). Is SOLVER_URL reachable?`);
       process.exit(1);
     }
     if (r.difficulty_score === 0 && !ALLOW_ZERO_SCORE) {
@@ -107,9 +135,8 @@ async function main() {
   }
 
   let processed = 0,
-    updated = 0,
-    failed = 0,
-    levelChanged = 0;
+    updated = 0;
+  const failures: Array<{ uuid: string; board: string; reason: string }> = [];
 
   // Simple fixed-size worker pool over the row list.
   let cursor = 0;
@@ -119,7 +146,7 @@ async function main() {
       const rec = rows[idx];
       const r = await validateBoard(rec.board);
       processed++;
-      if (r && r.techniques > 0) {
+      if (isOk(r)) {
         if (!DRY_RUN) {
           await db
             .update(boards)
@@ -133,10 +160,11 @@ async function main() {
         }
         updated++;
       } else {
-        failed++;
+        failures.push({ uuid: rec.uuid, board: rec.board, reason: r.error });
+        console.error(`  FAIL ${rec.uuid}: ${r.error}  board=${rec.board}`);
       }
       if (processed % 500 === 0 || processed === rows.length) {
-        console.log(`[${processed}/${rows.length}] updated=${updated} failed=${failed}`);
+        console.log(`[${processed}/${rows.length}] updated=${updated} failed=${failures.length}`);
       }
     }
   }
@@ -155,9 +183,14 @@ async function main() {
   }
 
   console.log("\n====================================================");
-  console.log(`Processed ${processed}, updated ${updated}, failed ${failed}`);
+  console.log(`Processed ${processed}, updated ${updated}, failed ${failures.length}`);
+  if (failures.length > 0) {
+    console.error(`\n${failures.length} board(s) FAILED (left unchanged):`);
+    for (const f of failures) console.error(`  ${f.uuid}  ${f.reason}  ${f.board}`);
+    console.error("\nInvestigate these before trusting the run.");
+  }
   console.log("Done!");
-  process.exit(failed > 0 ? 1 : 0);
+  process.exit(failures.length > 0 ? 1 : 0);
 }
 
 main().catch(err => {
