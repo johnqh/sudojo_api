@@ -81,6 +81,9 @@ export const boards = pgTable("boards", {
   board: varchar("board", { length: 81 }).notNull(),
   solution: varchar("solution", { length: 81 }).notNull(),
   techniques: bigint("techniques", { mode: "number" }).default(0),
+  // Sum of every solving step's technique score (ratio scale, Full House = 1);
+  // finer-grained companion to `level`. From the solver /validate response.
+  difficulty_score: integer("difficulty_score").default(0),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 });
@@ -95,6 +98,7 @@ export const dailies = pgTable("dailies", {
     onDelete: "set null",
   }),
   techniques: bigint("techniques", { mode: "number" }).default(0),
+  difficulty_score: integer("difficulty_score").default(0),
   board: varchar("board", { length: 81 }).notNull(),
   solution: varchar("solution", { length: 81 }).notNull(),
   created_at: timestamp("created_at").defaultNow(),
@@ -110,6 +114,7 @@ export const challenges = pgTable("challenges", {
     onDelete: "set null",
   }),
   difficulty: integer("difficulty").default(1),
+  difficulty_score: integer("difficulty_score").default(0),
   board: varchar("board", { length: 81 }).notNull(),
   solution: varchar("solution", { length: 81 }).notNull(),
   created_at: timestamp("created_at").defaultNow(),
@@ -229,6 +234,7 @@ export const gameSessions = pgTable("game_sessions", {
   board: varchar("board", { length: 81 }).notNull(),
   solution: varchar("solution", { length: 81 }).notNull(),
   level: integer("level").notNull(),
+  difficultyScore: integer("difficulty_score").notNull().default(0),
   techniques: bigint("techniques", { mode: "number" }).default(0),
   hintUsed: boolean("hint_used").notNull().default(false),
   hintsCount: integer("hints_count").notNull().default(0),

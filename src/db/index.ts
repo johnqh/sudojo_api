@@ -175,6 +175,12 @@ export async function initDatabase() {
     ALTER TABLE techniques ADD COLUMN IF NOT EXISTS strategy_id INTEGER REFERENCES strategies(strategy) ON DELETE SET NULL
   `;
 
+  // Migration: add difficulty_score (sum of per-step technique scores from the
+  // solver /validate response) to puzzle tables. Additive; defaults to 0.
+  await client`ALTER TABLE boards ADD COLUMN IF NOT EXISTS difficulty_score INTEGER DEFAULT 0`;
+  await client`ALTER TABLE dailies ADD COLUMN IF NOT EXISTS difficulty_score INTEGER DEFAULT 0`;
+  await client`ALTER TABLE challenges ADD COLUMN IF NOT EXISTS difficulty_score INTEGER DEFAULT 0`;
+
   // Seed strategies (idempotent)
   await client`
     INSERT INTO strategies (difficulty, stub) VALUES
@@ -423,6 +429,9 @@ export async function initGamificationTables() {
       puzzle_id VARCHAR(100)
     )
   `;
+
+  // Migration: add difficulty_score snapshot to active game sessions
+  await client`ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS difficulty_score INTEGER NOT NULL DEFAULT 0`;
 
   // Point transactions table (audit trail)
   await client`
