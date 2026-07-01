@@ -27,11 +27,14 @@ const LEVELS: Array<{
   { level: 5, title: "Challenging", text: "Complex patterns, conjugate pairs", requires_subscription: false },
   { level: 6, title: "Hard", text: "Wings and quads", requires_subscription: false },
   { level: 7, title: "Very Hard", text: "Complex fish and wings", requires_subscription: false },
-  { level: 8, title: "Expert", text: "Finned patterns and advanced", requires_subscription: false },
-  { level: 9, title: "Master", text: "Fish variants and ALS", requires_subscription: false },
-  { level: 10, title: "Master", text: "Advanced chain techniques", requires_subscription: false },
-  { level: 11, title: "Extreme", text: "Large wings, Franken fish, ALS chains", requires_subscription: false },
-  { level: 12, title: "Extreme", text: "Forcing/inference techniques", requires_subscription: false },
+  // Levels 8-12 are paywalled (see init.ts entitlement/offer_id seeding, and the
+  // live DB). Keep requires_subscription=true here so re-running this seed does
+  // NOT wipe the paywall flag. entitlement/offer_id are owned by init.ts.
+  { level: 8, title: "Expert", text: "Finned patterns and advanced", requires_subscription: true },
+  { level: 9, title: "Master", text: "Fish variants and ALS", requires_subscription: true },
+  { level: 10, title: "Master", text: "Advanced chain techniques", requires_subscription: true },
+  { level: 11, title: "Extreme", text: "Large wings, Franken fish, ALS chains", requires_subscription: true },
+  { level: 12, title: "Extreme", text: "Forcing/inference techniques", requires_subscription: true },
 ];
 
 // From SudokuDefines.h + CSudokuRuleSolver::GetLevel() + docs/LEVELS.md + populate-technique-paths.ts
