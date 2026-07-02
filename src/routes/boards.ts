@@ -316,6 +316,7 @@ boardsRouter.post(
         board: body.board,
         solution: body.solution,
         techniques: body.techniques,
+        difficulty_score: body.difficulty_score,
       })
       .returning();
 
@@ -363,6 +364,7 @@ boardsRouter.put(
         board: body.board ?? current.board,
         solution: body.solution ?? current.solution,
         techniques: body.techniques ?? current.techniques,
+        difficulty_score: body.difficulty_score ?? current.difficulty_score,
         updated_at: new Date(),
       })
       .where(eq(boards.uuid, uuid))

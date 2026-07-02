@@ -216,6 +216,7 @@ challengesRouter.post(
         board_uuid: body.board_uuid ?? null,
         level: body.level ?? null,
         difficulty: body.difficulty,
+        difficulty_score: body.difficulty_score,
         board: body.board,
         solution: body.solution,
       })
@@ -264,6 +265,7 @@ challengesRouter.put(
           body.board_uuid !== undefined ? body.board_uuid : current.board_uuid,
         level: body.level !== undefined ? body.level : current.level,
         difficulty: body.difficulty ?? current.difficulty,
+        difficulty_score: body.difficulty_score ?? current.difficulty_score,
         board: body.board ?? current.board,
         solution: body.solution ?? current.solution,
         updated_at: new Date(),

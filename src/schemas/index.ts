@@ -77,6 +77,7 @@ export const boardCreateSchema = z.object({
   board: z.string().length(81),
   solution: z.string().length(81),
   techniques: z.coerce.number().optional().default(0),
+  difficulty_score: z.coerce.number().int().optional().default(0),
 });
 
 export const boardUpdateSchema = z.object({
@@ -85,6 +86,7 @@ export const boardUpdateSchema = z.object({
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
   techniques: z.coerce.number().optional(),
+  difficulty_score: z.coerce.number().int().optional(),
 });
 
 // Daily schemas
@@ -94,6 +96,7 @@ export const dailyCreateSchema = z.object({
   board_uuid: z.string().uuid().nullish(),
   level: z.number().int().min(1).max(12).nullish(),
   techniques: z.coerce.number().optional().default(0),
+  difficulty_score: z.coerce.number().int().optional().default(0),
   board: z.string().length(81),
   solution: z.string().length(81),
 });
@@ -106,6 +109,7 @@ export const dailyUpdateSchema = z.object({
   board_uuid: z.string().uuid().nullish(),
   level: z.number().int().min(1).max(12).nullish(),
   techniques: z.coerce.number().optional(),
+  difficulty_score: z.coerce.number().int().optional(),
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
 });
@@ -115,6 +119,7 @@ export const challengeCreateSchema = z.object({
   board_uuid: z.string().uuid().nullish(),
   level: z.number().int().min(1).max(12).nullish(),
   difficulty: z.number().int().min(1).max(10).optional().default(1),
+  difficulty_score: z.coerce.number().int().optional().default(0),
   board: z.string().length(81),
   solution: z.string().length(81),
 });
@@ -123,6 +128,7 @@ export const challengeUpdateSchema = z.object({
   board_uuid: z.string().uuid().nullish(),
   level: z.number().int().min(1).max(12).nullish(),
   difficulty: z.number().int().min(1).max(10).optional(),
+  difficulty_score: z.coerce.number().int().optional(),
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
 });
@@ -227,6 +233,7 @@ export const gameStartSchema = z.object({
   solution: z.string().length(81),
   level: z.number().int().min(1).max(12),
   techniques: z.coerce.number().default(0),
+  difficultyScore: z.coerce.number().int().optional().default(0),
   puzzleType: z.enum(["daily", "level"]),
   puzzleId: z.string().max(100).optional(),
 });

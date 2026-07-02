@@ -201,6 +201,7 @@ playRouter.post(
           solution: body.solution,
           level: body.level,
           techniques: body.techniques,
+          difficultyScore: body.difficultyScore,
           puzzleType: body.puzzleType,
           puzzleId: body.puzzleId,
           hintUsed: false,
