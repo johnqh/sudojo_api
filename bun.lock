@@ -7,11 +7,11 @@
       "dependencies": {
         "@hono/zod-validator": "^0.7.5",
         "@napi-rs/canvas": "^0.1.68",
-        "@sudobility/auth_service": "^1.1.20",
-        "@sudobility/subscription_service": "^1.0.22",
-        "@sudobility/sudojo_ocr": "^1.1.41",
-        "@sudobility/sudojo_types": "^1.2.66",
-        "@sudobility/types": "^1.9.66",
+        "@sudobility/auth_service": "^1.1.21",
+        "@sudobility/subscription_service": "^1.0.23",
+        "@sudobility/sudojo_ocr": "^1.1.42",
+        "@sudobility/sudojo_types": "^1.2.67",
+        "@sudobility/types": "^1.9.67",
         "drizzle-orm": "^0.45.0",
         "firebase-admin": "^13.6.0",
         "hono": "^4.10.7",
@@ -258,15 +258,15 @@
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
-    "@sudobility/auth_service": ["@sudobility/auth_service@1.1.20", "", { "peerDependencies": { "@sudobility/types": "^1.9.66", "firebase-admin": "^13.0.0" } }, "sha512-o5fJjujdtFxzfG6QKPNyqaTNjPk403I4GPAMtj+phcvoWwLLPxIrYJwzqE86q6F6lRaYUqlFa+NsOsDRL7TrFw=="],
+    "@sudobility/auth_service": ["@sudobility/auth_service@1.1.21", "", { "peerDependencies": { "@sudobility/types": "^1.9.67", "firebase-admin": "^13.0.0" } }, "sha512-t+9BskQBaNOf1WVhkEQ1Lc4UMgZ5kVHhVfnwkchXeVUtbIokbBGXirlckscRnf+zNjdBExG/n4esv36NstDEDA=="],
 
-    "@sudobility/subscription_service": ["@sudobility/subscription_service@1.0.22", "", {}, "sha512-IVkANk5pDVX5U8Ibd0yw/k5JCEengR4Zk6gxPbJ1kLka6dHNjXkeNaRs2J5tlZl9XC+jApP3qwUdBmyPReibWA=="],
+    "@sudobility/subscription_service": ["@sudobility/subscription_service@1.0.23", "", {}, "sha512-IbpWkMvyAirLZzX+7M1T74fVebWmyX/NCjyY2BCqL2jRQZGCEqb8JCVIYHXvqQd8gwx1E0foz+E9yb0SEWbngw=="],
 
-    "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.41", "", { "peerDependencies": { "@sudobility/sudojo_types": "^1.2.66", "tesseract.js": "^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-U6RwdbbASVmNHV1f83MdkFrMhKhwII+5rqHqlQxUzxzZVjh8W2Ee0vcMMWXCM0n4kNcW51WO+O+w09hrQXPPuw=="],
+    "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.42", "", { "peerDependencies": { "@sudobility/sudojo_types": "^1.2.67", "tesseract.js": "^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-gULBvEMXcKDyUI3OXOsdEhi7zecAouCeUopfVeLrsy1V8Vz3p7UhhMDsp3bhZ2d+QeSFPuQogiFkPGpE8QW6XA=="],
 
-    "@sudobility/sudojo_types": ["@sudobility/sudojo_types@1.2.66", "", { "peerDependencies": { "@sudobility/types": "^1.9.66" } }, "sha512-11UOVZJ9vBiokwNiaEkLYvIeOAf5ujMnR2j+ZFX1MmfOdfs20tOLuCOe6o4TmeI9iUqYI5G0FaqCoWZjm/dvdA=="],
+    "@sudobility/sudojo_types": ["@sudobility/sudojo_types@1.2.67", "", { "peerDependencies": { "@sudobility/types": "^1.9.67" } }, "sha512-LUEAuqR2HWxv5idPRDBQf231PBHOKnYq9UTYbFGMJmWk/dDmsXJ82+K+p6cG+5ihzel3T9YNVfOaPDzMxF4zmw=="],
 
-    "@sudobility/types": ["@sudobility/types@1.9.66", "", {}, "sha512-eD61iT72sB5+1zJJtM81+eB0YmqEQ0dc/qno0Sw3GYJHcpkbgwN6LYEmiyJzlqtcN9sG5nWuexH9NnBvLODrtw=="],
+    "@sudobility/types": ["@sudobility/types@1.9.67", "", {}, "sha512-d+jk4L9i8VNvOnCJW/craqiiUTPH5aRq4KYe/QBrBU3mCcTfoYjgzzXopVQRcthiZ5dwQAEpdqCTQ0gAWRN6Ww=="],
 
     "@tootallnate/once": ["@tootallnate/once@2.0.0", "", {}, "sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A=="],
 
