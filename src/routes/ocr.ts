@@ -19,6 +19,7 @@ import {
   errorResponse,
   type OCRExtractData,
 } from "@sudobility/sudojo_types";
+import { extractViaML, isOCRMLEnabled } from "../services/ocr-ml-proxy";
 
 const ocrRouter = new Hono();
 
@@ -54,9 +55,46 @@ const extractSchema = z.object({
  * - confidence: OCR confidence score (0-100)
  * - digitCount: Number of digits recognized
  */
+/** Minimum clues for a well-posed Sudoku. */
+const MIN_CLUES = 17;
+
 ocrRouter.post("/extract", zValidator("json", extractSchema), async c => {
   try {
     const { image } = c.req.valid("json");
+
+    // Preferred path: the sudojo_ocr_ml whole-board model. Falls through to
+    // Tesseract when the service is not configured or is unreachable.
+    if (isOCRMLEnabled()) {
+      try {
+        const ml = await extractViaML(image, MIN_CLUES);
+        if (ml.debug) {
+          console.log(
+            `[OCR] ml detection=${ml.debug.detection} solvable=${ml.debug.solvable} ` +
+              `repaired=${ml.debug.constraintRepaired} ${ml.debug.elapsedMs}ms ` +
+              `digits=${ml.digitCount} conf=${ml.confidence}`
+          );
+        }
+        const data: OCRExtractData = {
+          board: ml.board,
+          confidence: ml.confidence,
+          digitCount: ml.digitCount,
+        };
+        return c.json(successResponse(data));
+      } catch (mlError) {
+        const status = (mlError as Error & { status?: number }).status;
+        if (status === 422) {
+          // The model read the image and found too few clues. Tesseract will
+          // not do better on the same pixels, so report it instead of retrying.
+          return c.json(
+            errorResponse(
+              "Could not find enough digits in the image. Please retake the photo with the whole puzzle in frame."
+            ),
+            400
+          );
+        }
+        console.warn("[OCR] ML service failed, falling back to Tesseract:", mlError);
+      }
+    }
 
     // Convert base64 to buffer
     // Handle both raw base64 and data URL format
@@ -94,10 +132,10 @@ ocrRouter.post("/extract", zValidator("json", extractSchema), async c => {
     }
 
     // Check minimum clues
-    if (result.digitCount < 17) {
+    if (result.digitCount < MIN_CLUES) {
       return c.json(
         errorResponse(
-          `Only ${result.digitCount} clues detected, minimum 17 required for a valid puzzle`
+          `Only ${result.digitCount} clues detected, minimum ${MIN_CLUES} required for a valid puzzle`
         ),
         400
       );
