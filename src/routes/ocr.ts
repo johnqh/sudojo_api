@@ -92,7 +92,10 @@ ocrRouter.post("/extract", zValidator("json", extractSchema), async c => {
             400
           );
         }
-        console.warn("[OCR] ML service failed, falling back to Tesseract:", mlError);
+        console.warn(
+          "[OCR] ML service failed, falling back to Tesseract:",
+          mlError
+        );
       }
     }
 
