@@ -175,12 +175,6 @@ export async function initDatabase() {
     ALTER TABLE techniques ADD COLUMN IF NOT EXISTS strategy_id INTEGER REFERENCES strategies(strategy) ON DELETE SET NULL
   `;
 
-  // Migration: add difficulty_score (sum of per-step technique scores from the
-  // solver /validate response) to puzzle tables. Additive; defaults to 0.
-  await client`ALTER TABLE boards ADD COLUMN IF NOT EXISTS difficulty_score INTEGER DEFAULT 0`;
-  await client`ALTER TABLE dailies ADD COLUMN IF NOT EXISTS difficulty_score INTEGER DEFAULT 0`;
-  await client`ALTER TABLE challenges ADD COLUMN IF NOT EXISTS difficulty_score INTEGER DEFAULT 0`;
-
   // Seed strategies (idempotent)
   await client`
     INSERT INTO strategies (difficulty, stub) VALUES
@@ -275,6 +269,18 @@ export async function initDatabase() {
       updated_at TIMESTAMP DEFAULT NOW()
     )
   `;
+
+  // Migration: add difficulty_score (sum of per-step technique scores from the
+  // solver /validate response) to puzzle tables. Additive; defaults to 0.
+  //
+  // Must run AFTER boards/dailies/challenges are created above. It previously
+  // ran ~60 lines earlier, which worked only because every existing database
+  // already had those tables -- on a fresh one, initDatabase died here with
+  // `relation "boards" does not exist`, so a new test database could never be
+  // bootstrapped.
+  await client`ALTER TABLE boards ADD COLUMN IF NOT EXISTS difficulty_score INTEGER DEFAULT 0`;
+  await client`ALTER TABLE dailies ADD COLUMN IF NOT EXISTS difficulty_score INTEGER DEFAULT 0`;
+  await client`ALTER TABLE challenges ADD COLUMN IF NOT EXISTS difficulty_score INTEGER DEFAULT 0`;
 
   await client`
     CREATE TABLE IF NOT EXISTS access_logs (

@@ -55,6 +55,19 @@ mock.module("../src/services/firebase", () => ({
     // No-op in tests
   },
   getFirebaseApp: () => ({}),
+  // Account deletion. Mirrors DeleteUserAccountResult from
+  // @sudobility/auth_service: the route reads googleTokenRevoked and
+  // appleTokenRevoked and logs when either is explicitly false, so null --
+  // meaning "not attempted" -- is the correct value for a test that passes
+  // no OAuth tokens.
+  deleteUserAccount: async (_userId: string, _options?: unknown) => ({
+    userDeleted: true,
+    googleTokenRevoked: null,
+    appleTokenRevoked: null,
+  }),
+  // Apple Sign In is not configured in tests. The route passes the result
+  // through as `appleConfig ?? undefined`, so null exercises that path.
+  getAppleSignInConfig: () => null,
 }));
 
 // Mock RevenueCat service - always return subscribed for tests
