@@ -7,14 +7,14 @@
  * Requires the C# solver service to be running at SOLVER_URL.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "fs";
 import { app } from "../src/index";
 import {
   setupTestDatabase,
   closeTestDatabase,
   getAuthHeaders,
-} from "./setup";
+} from "./db-helpers";
 import type { SolveData } from "@sudobility/sudojo_types";
 
 // Fixture type matching exported JSON

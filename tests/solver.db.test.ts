@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { app } from "../src/index";
 import {
   setupTestDatabase,
   closeTestDatabase,
   getAuthHeaders,
-} from "./setup";
+} from "./db-helpers";
 import type {
   ApiResponse,
   SolveData,

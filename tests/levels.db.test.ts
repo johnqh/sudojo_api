@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { app } from "../src/index";
 import {
   setupTestDatabase,
@@ -6,7 +6,7 @@ import {
   closeTestDatabase,
   API_TOKEN,
   getAuthHeaders,
-} from "./setup";
+} from "./db-helpers";
 import type { ApiResponse, LevelData } from "./types";
 
 describe("Levels API", () => {

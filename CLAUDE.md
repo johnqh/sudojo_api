@@ -31,8 +31,9 @@ bun run start            # Start production server
 bun run build            # Bundle for production (bun build)
 bun run build:compile    # Create standalone executable
 bun run test             # Run unit tests (vitest)
-bun run test:unit        # Run unit tests (vitest)
-bun run test:integration # Run integration tests (bun:test, requires .env.test)
+bun run test             # Unit tests, vitest. Never touches a database; this is what CI runs.
+bun run test:db          # Database tests (*.db.test.ts), vitest. MANUAL -- never run in CI.
+                         # Requires TEST_DATABASE_URL pointing at localhost; refuses any other host.
 bun run typecheck        # Type-check without emitting
 bun run lint             # Run ESLint
 bun run format           # Format with Prettier
@@ -222,7 +223,12 @@ Bun loads `.env` automatically. Key variables:
 ## Testing
 
 - **Unit tests**: Vitest in `tests/unit/`
-- **Integration tests**: bun:test in `tests/`, require `.env.test` with `sudojo_test` database
+- **One test runner, two configs.** Everything is vitest. `bun run test` (`vitest.config.ts`) excludes `**/*.db.test.ts`, so a CI run cannot reach a database. `bun run test:db` (`vitest.db.config.ts`) collects only those files and is run by hand.
+- **`TEST_DATABASE_URL`, not `DATABASE_URL`.** `tests/setup.db.ts` validates it points at exactly `localhost` (`127.0.0.1` is refused) before assigning `DATABASE_URL`. This replaced a `dbUrl.includes("_test")` substring check that passed for any database whose name contained "test".
+- **`tests/setup.db.ts` loads `.env.test` itself**, because `bunfig.toml`'s `[test.env]` was Bun test-runner config that vitest ignores. It loads that file *only* -- never `.env`, which holds a remote `DATABASE_URL` -- and never overrides a variable already in the environment, so an explicitly exported `TEST_DATABASE_URL` wins over the file. Without that precedence the guard can never be exercised against a bad value.
+- **Module mocks are `vi.mock` in `tests/setup.db.ts`**, converted from `bun:test`'s `mock.module`. `vi.mock` is hoisted, so the mock factories inline their string literals rather than referencing module-level consts -- a const would fail with "cannot access before initialization". Keep them in sync with `tests/db-helpers.ts`.
+- **Test helpers live in `tests/db-helpers.ts`**, not the setup file. Setup files run for the whole suite; helpers are imported per test file.
+- **`.env.test` is gitignored** because it holds live credentials. `.env.test.example` is the committed template.
 - Safety check: tests refuse to run against production database
 - Firebase/RevenueCat are mocked in test setup
 - Database cleaned between tests

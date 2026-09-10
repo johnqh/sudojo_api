@@ -5,7 +5,7 @@ import {
   beforeAll,
   afterAll,
   beforeEach,
-} from "bun:test";
+} from "vitest";
 import { app } from "../src/index";
 import {
   setupTestDatabase,
@@ -15,7 +15,7 @@ import {
   sampleBoard,
   sampleSolution,
   getAuthHeaders,
-} from "./setup";
+} from "./db-helpers";
 import type { ApiResponse, DailyData } from "./types";
 
 describe("Dailies API", () => {

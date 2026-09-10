@@ -5,7 +5,7 @@ import {
   beforeAll,
   afterAll,
   beforeEach,
-} from "bun:test";
+} from "vitest";
 import { app } from "../src/index";
 import {
   setupTestDatabase,
@@ -13,7 +13,7 @@ import {
   closeTestDatabase,
   API_TOKEN,
   getAuthHeaders,
-} from "./setup";
+} from "./db-helpers";
 import type { ApiResponse, LearningData } from "./types";
 
 describe("Learning API", () => {

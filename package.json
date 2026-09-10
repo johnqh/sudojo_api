@@ -11,18 +11,18 @@
     "build": "bun build src/index.ts --outdir dist --target bun",
     "build:compile": "bun build src/index.ts --compile --outfile dist/server",
     "clean": "rm -rf dist",
-    "test": "vitest run tests/unit",
-    "test:unit": "vitest run tests/unit",
-    "test:integration": "test -f .env.test || (echo 'ERROR: .env.test is missing — refusing to run integration tests against production database' && exit 1) && bun test --preload ./tests/setup.ts tests/levels tests/boards tests/techniques tests/learning tests/dailies tests/challenges tests/auth tests/solver",
+    "test": "vitest run",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "db:init": "bun run src/db/init.ts",
-    "db:seed-badges": "bun run src/db/seed-badges.ts"
+    "db:seed-badges": "bun run src/db/seed-badges.ts",
+    "test:watch": "vitest",
+    "test:db": "vitest run --config vitest.db.config.ts"
   },
   "devDependencies": {
-    "vitest": "^4.0.4",
+    "@sudobility/test-db-guard": "1.0.2",
     "@types/bun": "latest",
     "@types/node": "^24.10.1",
     "@typescript-eslint/eslint-plugin": "^8.50.0",
@@ -31,7 +31,8 @@
     "eslint": "^9.39.2",
     "eslint-plugin-import": "^2.32.0",
     "prettier": "^3.7.4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.4"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.5",
