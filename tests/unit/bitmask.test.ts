@@ -24,9 +24,28 @@ describe("parseBitmask", () => {
     expect(parseBitmask(42)).toBe(42n);
   });
 
-  it("still accepts integer numbers above 2^53 from old clients", () => {
-    // Already rounded by the client's JSON encoder; kept as lossy as before.
-    expect(parseBitmask(2 ** 60)).toBe(1n << 60n);
+  it("rejects integer numbers above 2^53: JSON.parse has already rounded them", () => {
+    // The mask {1,2,3,5,6,11,24,55} sent as a JSON number arrives without bit 1.
+    const lossy = JSON.parse("36028797035743342") as number;
+    expect(BigInt(lossy)).not.toBe(36028797035743342n);
+    expect(parseBitmask(lossy)).toBeNull();
+    expect(parseBitmask(2 ** 60)).toBeNull();
+    expect(parseBitmask(Number.MAX_SAFE_INTEGER)).toBe(
+      BigInt(Number.MAX_SAFE_INTEGER)
+    );
+  });
+
+  it("accepts unsafe numbers only when allowUnsafeNumber is set (legacy clients)", () => {
+    expect(parseBitmask(2 ** 60, { allowUnsafeNumber: true })).toBe(1n << 60n);
+  });
+
+  it("rejects over-long digit strings without parsing them", () => {
+    // A real bitmask has at most 19 digits (BITMASK_MAX). BigInt() on a
+    // 300k-digit string blocks the event loop for ~1s; 600k+ throws.
+    expect(parseBitmask("0".repeat(19) + "1")).toBeNull();
+    const started = performance.now();
+    expect(parseBitmask("9".repeat(600_000))).toBeNull();
+    expect(performance.now() - started).toBeLessThan(50);
   });
 
   it("accepts decimal strings exactly, beyond 2^53", () => {
@@ -134,11 +153,20 @@ describe("solverBitmask", () => {
     ).toBe(HIGH);
   });
 
-  it("falls back to String(techniques) when techniques_bitmask is absent", () => {
+  it("falls back to the number when techniques_bitmask is absent", () => {
     expect(solverBitmask({ techniques: 42 })).toBe(42n);
     expect(solverBitmask({ techniques: 42, techniques_bitmask: null })).toBe(
       42n
     );
+  });
+
+  it("never invents bits in the fallback (uses the double's exact value)", () => {
+    // An old solver's bit-57-only mask. String(2 ** 57) is "144115188075855870"
+    // = 2^57 - 2, i.e. bits 1-56 set and bit 57 cleared.
+    expect(solverBitmask({ techniques: 2 ** 57 })).toBe(1n << 57n);
+    // A rounded mask may still lack low bits, but never gains any.
+    const lossy = JSON.parse(`{"t":${HIGH_STRING}}`).t as number;
+    expect(solverBitmask({ techniques: lossy })).toBe(BigInt(lossy));
   });
 
   it("falls back when techniques_bitmask is malformed", () => {

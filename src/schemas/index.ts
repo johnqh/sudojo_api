@@ -3,24 +3,39 @@ import { parseBitmask } from "../lib/bitmask";
 
 /**
  * A technique bitmask in a request body: a non-negative integer as a JSON
- * number or a decimal string, parsed to a bigint. Send a string for values
- * above 2^53 (any technique id >= 54); a JSON number has already lost the low
- * bits. `null` means 0, as it did when these fields were `z.coerce.number()`.
+ * number or a decimal string (at most 19 digits), parsed to a bigint. Values
+ * above 2^53 (any technique id >= 54) must be sent as a string: a JSON number
+ * that large has already lost its low bits, so it is rejected. `null` means 0,
+ * as it did when these fields were `z.coerce.number()`.
  */
-const bitmask = z
-  .union([z.number(), z.string(), z.null()])
-  .transform((value, ctx) => {
-    const parsed = value === null ? 0n : parseBitmask(value);
+function bitmaskSchema(options: { allowUnsafeNumber?: boolean } = {}) {
+  return z.union([z.number(), z.string(), z.null()]).transform((value, ctx) => {
+    const parsed = value === null ? 0n : parseBitmask(value, options);
     if (parsed === null) {
+      const unsafeNumber =
+        typeof value === "number" &&
+        Number.isInteger(value) &&
+        !Number.isSafeInteger(value);
       ctx.addIssue({
         code: "custom",
-        message:
-          "Must be a non-negative integer bitmask, as a number or a decimal string",
+        message: unsafeNumber
+          ? "Bitmasks above 2^53 must be sent as a decimal string (a JSON number that large has lost its low bits)"
+          : "Must be a non-negative integer bitmask, as a number or a decimal string",
       });
       return z.NEVER;
     }
     return parsed;
   });
+}
+
+const bitmask = bitmaskSchema();
+
+/**
+ * `/play/start` only: old app builds in the stores send `techniques` as a
+ * JSON number, so an unsafe number is still accepted (lossy, as before) rather
+ * than failing game start. The stored value is never read.
+ */
+const legacyBitmask = bitmaskSchema({ allowUnsafeNumber: true });
 
 /** A bitmask with at least one technique bit set. */
 const nonEmptyBitmask = bitmask.refine(value => value >= 1n, {
@@ -255,7 +270,7 @@ export const gameStartSchema = z.object({
   board: z.string().length(81),
   solution: z.string().length(81),
   level: z.number().int().min(1).max(12),
-  techniques: bitmask.optional().default(0n),
+  techniques: legacyBitmask.optional().default(0n),
   difficultyScore: z.coerce.number().int().optional().default(0),
   puzzleType: z.enum(["daily", "level"]),
   puzzleId: z.string().max(100).optional(),

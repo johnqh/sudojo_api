@@ -9,7 +9,7 @@ This file provides context for AI assistants working on this codebase.
 
 ## Project Overview
 
-`sudojo_api` (private, `BUSL-1.1`, v1.0.161) is the backend REST API for Sudojo, a Sudoku learning platform. It runs Hono on Bun and sits between the Sudojo clients and PostgreSQL, the C# solver service, the OCR ML service, Firebase Auth, and RevenueCat.
+`sudojo_api` (private, `BUSL-1.1`; version in `package.json`) is the backend REST API for Sudojo, a Sudoku learning platform. It runs Hono on Bun and sits between the Sudojo clients and PostgreSQL, the C# solver service, the OCR ML service, Firebase Auth, and RevenueCat.
 
 **Responsibilities:** content CRUD (levels 1–12, techniques 1–60, strategies, learning, communities), puzzles (boards, dailies with a fallback, challenges, technique examples/practices), solver proxy with hint point tracking, play sessions and gamification (points, badges, user level), user accounts (subscription lookup, soft delete), OCR, and optional AES-256-GCM encryption of `solution` fields.
 
@@ -38,7 +38,7 @@ bun run db:seed-badges   # Seed level_N / games_N badge definitions
 bun run --inspect src/index.ts   # Start with the debugger
 ```
 
-Verified on 2026-09-10 (Bun 1.3.10): `typecheck` (clean), `lint` (clean), `format:check` (clean), `test` (7 files, 287 tests pass), `bun build src/index.ts --target bun` (bundles). Not run: `dev`/`start` (long-running), `test:db`/`db:*` (need a database), `build:compile`.
+Verified on 2026-09-11 (Bun 1.3.10): `typecheck` (clean), `lint` (clean), `format:check` (clean), `test` (7 files, 294 tests pass), `bun build src/index.ts --target bun` (bundles). Not run: `dev`/`start` (long-running), `test:db`/`db:*` (need a database), `build:compile`.
 
 **Never run bare `bun test`.** That is Bun's own runner: it ignores `vitest.config.ts` and the setup files, so the localhost `TEST_DATABASE_URL` guard never runs, and Bun auto-loads `.env`, which holds a remote `DATABASE_URL`. The `*.db.test.ts` helpers delete table contents.
 
@@ -152,7 +152,7 @@ Dockerfile                 # oven/bun:1 build (tsc check) → oven/bun:1-slim ru
 
 | Sibling | Direction | Contract |
 |---------|-----------|----------|
-| `sudojo_solver` (C# `SudokuApi`) | API → solver | `GET ${SOLVER_URL}/api/solve?original&user&autopencilmarks&pencilmarks[&techniques]`, `/api/validate?original[&brutalForce]`, `/api/generate[?symmetrical]`. Envelope `{ success, error: {code,message}, data }`, where `code` is an integer 0–3 (`SolverErrorCode` in `solver-proxy.ts`), not a string. `/validate` and `/generate` `data.board` carries `techniques` (a JSON number, rounded above 2^53) and `techniques_bitmask` (the same ulong as a decimal string). Read it with `solverBitmask()`, which prefers the string and falls back to `String(techniques)` for older solvers. `hints.level === 0` means an auto-pencilmark hint. Technique ids 1–60 and levels 1–12 mirror `SudokuEngine/SudokuDefines.h` and `GetLevel`. `scripts/seed-levels-techniques.ts` and `backfill-board-difficulty.ts` follow its `difficulty_score` |
+| `sudojo_solver` (C# `SudokuApi`) | API → solver | `GET ${SOLVER_URL}/api/solve?original&user&autopencilmarks&pencilmarks[&techniques]`, `/api/validate?original[&brutalForce]`, `/api/generate[?symmetrical]`. Envelope `{ success, error: {code,message}, data }`, where `code` is an integer 0–3 (`SolverErrorCode` in `solver-proxy.ts`), not a string. `/validate` and `/generate` `data.board` carries `techniques` (a JSON number, rounded above 2^53) and `techniques_bitmask` (the same ulong as a decimal string). Read it with `solverBitmask()`, which prefers the string and falls back to `BigInt(techniques)` for older solvers (may lack low bits, never invents any; never use `String(techniques)`: `String(2 ** 57)` is 2^57 − 2). `hints.level === 0` means an auto-pencilmark hint. Technique ids 1–60 and levels 1–12 mirror `SudokuEngine/SudokuDefines.h` and `GetLevel`. `scripts/seed-levels-techniques.ts` and `backfill-board-difficulty.ts` follow its `difficulty_score` |
 | `sudojo_ocr_ml` | API → ML | `POST ${OCR_ML_URL}/v1/ocr` `{ image, min_clues }` → `OCRExtractData` plus `debug`. 422 means too few clues |
 | `@sudobility/sudojo_types` `^1.2.67` | dep | Response envelope helpers, all entity/response types, `EMPTY_BOARD`, `scrambleBoard`, `techniqueToBit`. New shared shapes go there first. The `_bitmask` response fields are not in the published version yet, so `src/lib/bitmask.ts` extends `Board` / `Daily` / `TechniqueExample` / `ValidateBoardData` locally with intersection types (`BoardResponse` etc., marked `TODO(sudojo_types)`). Its `techniqueToBit` / `addTechnique` / `hasTechnique` return or take JS numbers, so they are lossy for ids ≥ 54. Use `techniqueBit()` from `src/lib/bitmask.ts` instead |
 | `@sudobility/sudojo_ocr` `^1.1.42` | dep | Tesseract pipeline (`extractSudokuFromImage`, `/node` canvas adapter) |

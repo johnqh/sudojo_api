@@ -384,6 +384,50 @@ describe("Schema Validation", () => {
         expect(result.data.techniques).toBe(42n);
       }
     });
+
+    it("should reject a JSON number above 2^53 and ask for a decimal string", () => {
+      const result = boardCreateSchema.safeParse({
+        board: validBoard,
+        solution: validSolution,
+        techniques: 2 ** 60,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toMatch(/decimal string/);
+      }
+    });
+
+    it("should reject an over-long digit string with a validation error, not a throw", () => {
+      const result = boardCreateSchema.safeParse({
+        board: validBoard,
+        solution: validSolution,
+        techniques: "9".repeat(600_000),
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("gameStartSchema bitmask (old app builds)", () => {
+    const start = (techniques: unknown) =>
+      gameStartSchema.safeParse({
+        board: validBoard,
+        solution: validSolution,
+        level: 12,
+        puzzleType: "daily",
+        techniques,
+      });
+
+    it("still accepts a JSON number above 2^53, so old builds can start games", () => {
+      const result = start(2 ** 60);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.techniques).toBe(1n << 60n);
+      }
+    });
+
+    it("rejects an over-long digit string", () => {
+      expect(start("9".repeat(600_000)).success).toBe(false);
+    });
   });
 
   describe("boardUpdateSchema", () => {

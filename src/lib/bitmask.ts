@@ -26,6 +26,9 @@ import type {
 /** Largest value a Postgres BIGINT (signed 64-bit) can hold. */
 export const BITMASK_MAX = 2n ** 63n - 1n;
 
+/** Digits in {@link BITMASK_MAX}; longer strings are rejected before `BigInt()`. */
+const BITMASK_MAX_DIGITS = BITMASK_MAX.toString().length;
+
 /** Response fields that carry a technique bitmask. */
 export const BITMASK_FIELDS = ["techniques", "techniques_bitfield"] as const;
 export type BitmaskField = (typeof BITMASK_FIELDS)[number];
@@ -33,20 +36,32 @@ export type BitmaskField = (typeof BITMASK_FIELDS)[number];
 /**
  * Parse a technique bitmask from a request.
  *
- * Accepts a non-negative integer `number`, a base-10 digit string, or a
- * `bigint`, up to {@link BITMASK_MAX}. Returns `null` for anything else
- * (negative, fractional, exponent/hex/padded strings, "", null, ...), so each
- * caller reports the error in its own style.
+ * Accepts a non-negative safe-integer `number`, a base-10 digit string of at
+ * most 19 digits, or a `bigint`, up to {@link BITMASK_MAX}. Returns `null` for
+ * anything else (negative, fractional, exponent/hex/padded/over-long strings,
+ * "", null, ...), so each caller reports the error in its own style.
+ *
+ * A `number` above 2^53 is rejected: `JSON.parse` has already rounded it, so
+ * its low bits are wrong. Pass `allowUnsafeNumber` only where legacy clients
+ * must keep working and the value is never trusted (e.g. `/play/start`).
  */
-export function parseBitmask(value: unknown): bigint | null {
+export function parseBitmask(
+  value: unknown,
+  options: { allowUnsafeNumber?: boolean } = {}
+): bigint | null {
   let parsed: bigint;
   if (typeof value === "bigint") {
     parsed = value;
   } else if (typeof value === "number") {
     if (!Number.isInteger(value)) return null;
+    if (!Number.isSafeInteger(value) && !options.allowUnsafeNumber) return null;
     parsed = BigInt(value);
   } else if (typeof value === "string") {
-    if (!/^[0-9]+$/.test(value)) return null;
+    // Length check first: BigInt() on a huge digit string blocks the event
+    // loop (~1s for 300k digits) or throws (600k+ in Bun).
+    if (value.length > BITMASK_MAX_DIGITS || !/^[0-9]+$/.test(value)) {
+      return null;
+    }
     parsed = BigInt(value);
   } else {
     return null;
@@ -75,8 +90,10 @@ export function bitmaskParam(value: bigint): SQL {
  *
  * The solver sends the ulong twice: `techniques` (a JSON number, already
  * rounded by `JSON.parse`) and `techniques_bitmask` (the same value as a
- * decimal string). Prefer the string; fall back to `String(techniques)` for a
- * solver that predates it.
+ * decimal string). Prefer the string; for a solver that predates it, fall back
+ * to `BigInt(techniques)`. That is the double's exact value: it may lack low
+ * bits but never invents any. (`String(techniques)` would: `String(2 ** 57)` is
+ * "144115188075855870" = 2^57 - 2, i.e. bits 1-56 set and bit 57 cleared.)
  *
  * @throws Error if neither field holds a valid bitmask
  */
@@ -91,10 +108,7 @@ export function solverBitmask(board: {
       `[bitmask] solver sent invalid techniques_bitmask ${JSON.stringify(board.techniques_bitmask)}; using techniques`
     );
   }
-  const fallback =
-    typeof board.techniques === "number"
-      ? parseBitmask(String(board.techniques))
-      : null;
+  const fallback = parseBitmask(board.techniques, { allowUnsafeNumber: true });
   if (fallback === null) {
     throw new Error(
       `Solver returned no valid techniques bitmask (techniques=${String(board.techniques)})`
@@ -160,7 +174,8 @@ export function toBitmaskFields<T extends object>(
       out[`${field}_bitmask`] = value;
       continue;
     }
-    const bitmask = parseBitmask(value);
+    // Output only: accept any integer (as before) so a value can't 500 a response.
+    const bitmask = parseBitmask(value, { allowUnsafeNumber: true });
     if (bitmask === null) {
       throw new Error(`Invalid ${field} bitmask: ${String(value)}`);
     }
