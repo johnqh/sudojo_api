@@ -244,7 +244,9 @@ describe("Schema Validation", () => {
 
   describe("techniquePathParamSchema", () => {
     it("should accept valid path", () => {
-      const result = techniquePathParamSchema.safeParse({ path: "naked-single" });
+      const result = techniquePathParamSchema.safeParse({
+        path: "naked-single",
+      });
       expect(result.success).toBe(true);
     });
 
@@ -367,11 +369,11 @@ describe("Schema Validation", () => {
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.techniques).toBe(0);
+        expect(result.data.techniques).toBe(0n);
       }
     });
 
-    it("should coerce techniques from string", () => {
+    it("should parse techniques from a decimal string", () => {
       const result = boardCreateSchema.safeParse({
         board: validBoard,
         solution: validSolution,
@@ -379,7 +381,7 @@ describe("Schema Validation", () => {
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.techniques).toBe(42);
+        expect(result.data.techniques).toBe(42n);
       }
     });
   });
@@ -643,7 +645,7 @@ describe("Schema Validation", () => {
       expect(result.success).toBe(false);
     });
 
-    it("should coerce techniques_bitfield from string", () => {
+    it("should parse techniques_bitfield from a decimal string", () => {
       const result = techniqueExampleCreateSchema.safeParse({
         board: validBoard,
         solution: validSolution,
@@ -652,7 +654,7 @@ describe("Schema Validation", () => {
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.techniques_bitfield).toBe(42);
+        expect(result.data.techniques_bitfield).toBe(42n);
       }
     });
   });
@@ -752,7 +754,7 @@ describe("Schema Validation", () => {
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.techniques).toBe(0);
+        expect(result.data.techniques).toBe(0n);
       }
     });
 
@@ -861,5 +863,116 @@ describe("Schema Validation", () => {
       });
       expect(result.success).toBe(false);
     });
+  });
+});
+
+// =========================================================================
+// Technique bitmask fields: number or decimal string in, bigint out
+// =========================================================================
+
+describe("bitmask fields", () => {
+  /** Bit 60 + bit 1: exceeds 2^53, so only a string carries it exactly. */
+  const HIGH_STRING = "1152921504606846978";
+  const HIGH = (1n << 60n) | (1n << 1n);
+
+  const base = { board: validBoard, solution: validSolution };
+  const cases = [
+    {
+      name: "boardCreateSchema.techniques",
+      schema: boardCreateSchema,
+      field: "techniques",
+      body: base,
+      min: 0n,
+    },
+    {
+      name: "boardUpdateSchema.techniques",
+      schema: boardUpdateSchema,
+      field: "techniques",
+      body: {},
+      min: 0n,
+    },
+    {
+      name: "dailyCreateSchema.techniques",
+      schema: dailyCreateSchema,
+      field: "techniques",
+      body: { ...base, date: "2026-09-10" },
+      min: 0n,
+    },
+    {
+      name: "dailyUpdateSchema.techniques",
+      schema: dailyUpdateSchema,
+      field: "techniques",
+      body: {},
+      min: 0n,
+    },
+    {
+      name: "techniqueExampleCreateSchema.techniques_bitfield",
+      schema: techniqueExampleCreateSchema,
+      field: "techniques_bitfield",
+      body: { ...base, primary_technique: 1 },
+      min: 1n,
+    },
+    {
+      name: "techniqueExampleUpdateSchema.techniques_bitfield",
+      schema: techniqueExampleUpdateSchema,
+      field: "techniques_bitfield",
+      body: {},
+      min: 1n,
+    },
+    {
+      name: "gameStartSchema.techniques",
+      schema: gameStartSchema,
+      field: "techniques",
+      body: { ...base, level: 1, puzzleType: "daily" },
+      min: 0n,
+    },
+  ] as const;
+
+  describe.each(cases)("$name", ({ schema, field, body, min }) => {
+    const parse = (value: unknown) =>
+      (schema as typeof boardUpdateSchema).safeParse({
+        ...body,
+        [field]: value,
+      });
+    const parsedValue = (value: unknown) => {
+      const result = parse(value);
+      expect(result.success).toBe(true);
+      return result.success
+        ? (result.data as Record<string, unknown>)[field]
+        : undefined;
+    };
+
+    it("parses a decimal string above 2^53 exactly", () => {
+      expect(parsedValue(HIGH_STRING)).toBe(HIGH);
+    });
+
+    it("parses a number into a bigint", () => {
+      expect(parsedValue(42)).toBe(42n);
+    });
+
+    it("accepts the minimum", () => {
+      expect(parsedValue(min.toString())).toBe(min);
+    });
+
+    it.each([
+      -1,
+      "-1",
+      1.5,
+      "1.5",
+      "1e3",
+      "0x10",
+      "",
+      "abc",
+      (2n ** 63n).toString(),
+      true,
+    ])("rejects %s", value => {
+      expect(parse(value).success).toBe(false);
+    });
+
+    if (min > 0n) {
+      it("rejects 0", () => {
+        expect(parse(0).success).toBe(false);
+      });
+    }
   });
 });

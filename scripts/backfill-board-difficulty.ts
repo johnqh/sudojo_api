@@ -22,6 +22,7 @@
 
 import { db, boards } from "../src/db";
 import { eq, sql } from "drizzle-orm";
+import { solverBitmask } from "../src/lib/bitmask";
 
 const SOLVER_URL = process.env.SOLVER_URL || "http://localhost:8080";
 const DRY_RUN = process.argv.includes("--dry-run");
@@ -36,13 +37,21 @@ const CONCURRENCY = Math.max(1, numArg("--concurrency", 8));
 
 interface ValidateResponse {
   success: boolean;
-  error?: { code?: string; message?: string } | null;
+  /** code is the solver's integer ErrorCode (0-3) */
+  error?: { code?: number; message?: string } | null;
   data: {
-    board: { level: number; techniques: number; difficulty_score?: number };
+    board: {
+      level: number;
+      /** JSON number: rounded once a technique id >= 54 is set */
+      techniques: number;
+      /** Same bitmask as a decimal string (newer solvers); exact */
+      techniques_bitmask?: string;
+      difficulty_score?: number;
+    };
   } | null;
 }
 
-type ValidateOk = { level: number; techniques: number; difficulty_score: number };
+type ValidateOk = { level: number; techniques: bigint; difficulty_score: number };
 type ValidateResult = ValidateOk | { error: string };
 const isOk = (r: ValidateResult): r is ValidateOk => "difficulty_score" in r;
 
@@ -71,12 +80,13 @@ async function validateBoard(original: string): Promise<ValidateResult> {
         return { error: `validate ${result.error?.code ?? "no-data"}` };
       }
       const b = result.data.board;
-      if (!(b.techniques > 0)) {
+      const techniques = solverBitmask(b);
+      if (techniques === 0n) {
         return { error: "techniques=0 (not rule-solvable)" };
       }
       return {
         level: b.level,
-        techniques: b.techniques,
+        techniques,
         difficulty_score: b.difficulty_score ?? 0,
       };
     } catch (e) {

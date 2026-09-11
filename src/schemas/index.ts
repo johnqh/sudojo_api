@@ -1,4 +1,31 @@
 import { z } from "zod";
+import { parseBitmask } from "../lib/bitmask";
+
+/**
+ * A technique bitmask in a request body: a non-negative integer as a JSON
+ * number or a decimal string, parsed to a bigint. Send a string for values
+ * above 2^53 (any technique id >= 54); a JSON number has already lost the low
+ * bits. `null` means 0, as it did when these fields were `z.coerce.number()`.
+ */
+const bitmask = z
+  .union([z.number(), z.string(), z.null()])
+  .transform((value, ctx) => {
+    const parsed = value === null ? 0n : parseBitmask(value);
+    if (parsed === null) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Must be a non-negative integer bitmask, as a number or a decimal string",
+      });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+
+/** A bitmask with at least one technique bit set. */
+const nonEmptyBitmask = bitmask.refine(value => value >= 1n, {
+  message: "Must have at least one bit set",
+});
 
 // Level schemas
 export const levelCreateSchema = z.object({
@@ -70,13 +97,12 @@ export const learningUpdateSchema = z.object({
 });
 
 // Board schemas
-// Note: techniques uses coerce to handle both number and string (for values > 2^53)
 export const boardCreateSchema = z.object({
   level: z.number().int().min(1).max(12).nullish(),
   symmetrical: z.boolean().optional().default(false),
   board: z.string().length(81),
   solution: z.string().length(81),
-  techniques: z.coerce.number().optional().default(0),
+  techniques: bitmask.optional().default(0n),
   difficulty_score: z.coerce.number().int().optional().default(0),
 });
 
@@ -85,17 +111,16 @@ export const boardUpdateSchema = z.object({
   symmetrical: z.boolean().optional(),
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
-  techniques: z.coerce.number().optional(),
+  techniques: bitmask.optional(),
   difficulty_score: z.coerce.number().int().optional(),
 });
 
 // Daily schemas
-// Note: techniques uses coerce to handle both number and string (for values > 2^53)
 export const dailyCreateSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   board_uuid: z.string().uuid().nullish(),
   level: z.number().int().min(1).max(12).nullish(),
-  techniques: z.coerce.number().optional().default(0),
+  techniques: bitmask.optional().default(0n),
   difficulty_score: z.coerce.number().int().optional().default(0),
   board: z.string().length(81),
   solution: z.string().length(81),
@@ -108,7 +133,7 @@ export const dailyUpdateSchema = z.object({
     .optional(),
   board_uuid: z.string().uuid().nullish(),
   level: z.number().int().min(1).max(12).nullish(),
-  techniques: z.coerce.number().optional(),
+  techniques: bitmask.optional(),
   difficulty_score: z.coerce.number().int().optional(),
   board: z.string().length(81).optional(),
   solution: z.string().length(81).optional(),
@@ -191,12 +216,11 @@ export const userIdParamSchema = z.object({
 
 // Technique example schemas
 // Note: primary_technique max value must match the highest TechniqueId in sudojo_types
-// Note: techniques_bitfield uses coerce to handle values > 2^53
 export const techniqueExampleCreateSchema = z.object({
   board: z.string().length(81),
   pencilmarks: z.string().nullish(),
   solution: z.string().length(81),
-  techniques_bitfield: z.coerce.number().min(1),
+  techniques_bitfield: nonEmptyBitmask,
   primary_technique: z.number().int().min(1).max(60),
   hint_data: z.string().nullish(),
   source_board_uuid: z.string().uuid().nullish(),
@@ -206,7 +230,7 @@ export const techniqueExampleUpdateSchema = z.object({
   board: z.string().length(81).optional(),
   pencilmarks: z.string().nullish(),
   solution: z.string().length(81).optional(),
-  techniques_bitfield: z.coerce.number().min(1).optional(),
+  techniques_bitfield: nonEmptyBitmask.optional(),
   primary_technique: z.number().int().min(1).max(60).optional(),
   hint_data: z.string().nullish(),
   source_board_uuid: z.string().uuid().nullish(),
@@ -227,12 +251,11 @@ export const techniquePracticeCreateSchema = z.object({
 // =============================================================================
 
 // Play session schemas
-// Note: techniques uses coerce to handle values > 2^53
 export const gameStartSchema = z.object({
   board: z.string().length(81),
   solution: z.string().length(81),
   level: z.number().int().min(1).max(12),
-  techniques: z.coerce.number().default(0),
+  techniques: bitmask.optional().default(0n),
   difficultyScore: z.coerce.number().int().optional().default(0),
   puzzleType: z.enum(["daily", "level"]),
   puzzleId: z.string().max(100).optional(),

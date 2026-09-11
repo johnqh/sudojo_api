@@ -80,7 +80,10 @@ export const boards = pgTable("boards", {
   symmetrical: boolean("symmetrical").default(false),
   board: varchar("board", { length: 81 }).notNull(),
   solution: varchar("solution", { length: 81 }).notNull(),
-  techniques: bigint("techniques", { mode: "number" }).default(0),
+  // Technique bitmask, bit N = technique id N. mode "bigint" because values
+  // exceed 2^53; responses go through toBitmaskFields() (src/lib/bitmask.ts),
+  // since JSON.stringify throws on bigint.
+  techniques: bigint("techniques", { mode: "bigint" }).default(0n),
   // Sum of every solving step's technique score (ratio scale, Full House = 1);
   // finer-grained companion to `level`. From the solver /validate response.
   difficulty_score: integer("difficulty_score").default(0),
@@ -97,7 +100,7 @@ export const dailies = pgTable("dailies", {
   level: integer("level").references(() => levels.level, {
     onDelete: "set null",
   }),
-  techniques: bigint("techniques", { mode: "number" }).default(0),
+  techniques: bigint("techniques", { mode: "bigint" }).default(0n),
   difficulty_score: integer("difficulty_score").default(0),
   board: varchar("board", { length: 81 }).notNull(),
   solution: varchar("solution", { length: 81 }).notNull(),
@@ -143,7 +146,7 @@ export const techniqueExamples = pgTable("technique_examples", {
   solution: varchar("solution", { length: 81 }).notNull(),
   /** Bitfield of ALL techniques applicable at this board state */
   techniques_bitfield: bigint("techniques_bitfield", {
-    mode: "number",
+    mode: "bigint",
   }).notNull(),
   /** Primary technique (the one solver would use first) */
   primary_technique: integer("primary_technique").notNull(),
@@ -235,7 +238,7 @@ export const gameSessions = pgTable("game_sessions", {
   solution: varchar("solution", { length: 81 }).notNull(),
   level: integer("level").notNull(),
   difficultyScore: integer("difficulty_score").notNull().default(0),
-  techniques: bigint("techniques", { mode: "number" }).default(0),
+  techniques: bigint("techniques", { mode: "bigint" }).default(0n),
   hintUsed: boolean("hint_used").notNull().default(false),
   hintsCount: integer("hints_count").notNull().default(0),
   hintPointsEarned: integer("hint_points_earned").notNull().default(0),

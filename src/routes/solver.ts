@@ -3,10 +3,11 @@
  *
  * Proxies requests to the external solver service for puzzle solving,
  * validation, and generation. Tracks hint usage for gamification.
- * Hint access gating is handled client-side using the level's entitlement field.
+ * Hint limits are not enforced: every caller gets every hint level. Clients
+ * gate hints using the level's entitlement field.
  *
  * Public endpoints: GET /validate, GET /generate
- * Authenticated: GET /solve (hint access middleware for auth context)
+ * Optional auth: GET /solve (optionalAuthMiddleware identifies the caller)
  */
 
 import { Hono, type Context } from "hono";
@@ -18,8 +19,6 @@ import {
   EMPTY_PENCILMARKS,
   type SolveData,
   type SolverHintStep,
-  type ValidateData,
-  type GenerateData,
 } from "@sudobility/sudojo_types";
 import { db } from "../db";
 import {
@@ -33,9 +32,11 @@ import {
   proxySolverRequest,
   callSolver,
   type SolverResponse,
+  type SolverValidateData,
 } from "../services/solver-proxy";
+import { toValidateResponseData } from "../lib/bitmask";
 
-import { hintAccessMiddleware } from "../middleware/hintAccess";
+import { optionalAuthMiddleware } from "../middleware/optionalAuth";
 
 const solverRouter = new Hono();
 
@@ -125,7 +126,7 @@ async function trackHintUsage(
   }
 }
 
-// Helper to handle solve request with hint access control
+// Helper to handle a solve request. Unrestricted: no hint level is withheld.
 async function handleSolveRequest(c: Context) {
   try {
     // Get query params with defaults
@@ -235,11 +236,13 @@ async function handleSolveRequest(c: Context) {
 /**
  * GET /api/v1/solver/solve
  *
- * Get hints for solving a puzzle. Access controlled by subscription tier.
+ * Get hints for solving a puzzle. Unrestricted: every caller, anonymous or
+ * not, gets every hint level (hint limits are deliberately not enforced).
  * If an authenticated user has an active game session, hint usage is tracked
  * for gamification (awards 2 x technique_level points).
  *
- * @auth Optional - anonymous users get free tier access (levels 1-3)
+ * @auth Optional - a valid Bearer token identifies the user; a bad one is
+ *   401 AUTH_TOKEN_INVALID
  * @query original - 81-digit puzzle string (required)
  * @query user - 81-digit user input string, 0=empty (defaults to 81 zeros)
  * @query autopencilmarks - "true"/"false" (defaults to "false")
@@ -249,7 +252,7 @@ async function handleSolveRequest(c: Context) {
  * @returns 400 - Solver error (invalid puzzle)
  * @returns 503 - Solver service unavailable
  */
-solverRouter.get("/solve", hintAccessMiddleware, handleSolveRequest);
+solverRouter.get("/solve", optionalAuthMiddleware, handleSolveRequest);
 
 /**
  * GET /api/v1/solver/validate
@@ -260,7 +263,7 @@ solverRouter.get("/solve", hintAccessMiddleware, handleSolveRequest);
  * @public No authentication required
  * @query original - 81-char puzzle string (required)
  * @query brutalForce - "true"/"false" - verify uniqueness via brute force (defaults to "true")
- * @returns 200 - Validation data (level, techniques, solution)
+ * @returns 200 - Validation data (level, techniques, techniques_bitmask, solution)
  * @returns 400 - Invalid puzzle or validation failed
  * @returns 503 - Solver service unavailable
  */
@@ -276,7 +279,7 @@ solverRouter.get("/validate", async c => {
     }
 
     const queryString = new URL(c.req.url).search.slice(1);
-    const result = await proxySolverRequest<ValidateData>(
+    const result = await proxySolverRequest<SolverValidateData>(
       "validate",
       queryString
     );
@@ -288,7 +291,7 @@ solverRouter.get("/validate", async c => {
       return c.json(errorResponse(errorMsg), 400);
     }
 
-    return c.json(successResponse(result.data));
+    return c.json(successResponse(toValidateResponseData(result.data)));
   } catch (error) {
     console.error("Validate error:", error);
     return c.json(errorResponse("Solver service unavailable"), 503);
@@ -302,14 +305,14 @@ solverRouter.get("/validate", async c => {
  *
  * @public No authentication required
  * @query symmetrical - "true"/"false" - generate symmetrical puzzle
- * @returns 200 - Generated puzzle data (board, solution, level, techniques)
+ * @returns 200 - Generated puzzle data (board, solution, level, techniques, techniques_bitmask)
  * @returns 500 - Generation failed
  * @returns 503 - Solver service unavailable
  */
 solverRouter.get("/generate", async c => {
   try {
     const queryString = new URL(c.req.url).search.slice(1);
-    const result = await proxySolverRequest<GenerateData>(
+    const result = await proxySolverRequest<SolverValidateData>(
       "generate",
       queryString
     );
@@ -321,7 +324,7 @@ solverRouter.get("/generate", async c => {
       return c.json(errorResponse(errorMsg), 500);
     }
 
-    return c.json(successResponse(result.data));
+    return c.json(successResponse(toValidateResponseData(result.data)));
   } catch (error) {
     console.error("Solver proxy error:", error);
     return c.json(errorResponse("Solver service unavailable"), 503);

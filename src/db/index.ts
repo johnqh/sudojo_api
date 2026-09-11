@@ -60,6 +60,25 @@ export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
 });
 
 /**
+ * Idempotent migration: ALTER a column to BIGINT only while it is still
+ * INTEGER. The type change rewrites the table under an ACCESS EXCLUSIVE lock,
+ * so it is skipped entirely once the column has been widened.
+ */
+async function widenColumnToBigint(
+  client: ReturnType<typeof postgres>,
+  table: string,
+  column: string
+) {
+  const [info] = await client<{ data_type: string }[]>`
+    SELECT data_type FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = ${table} AND column_name = ${column}
+  `;
+  if (info?.data_type === "integer") {
+    await client`ALTER TABLE ${client(table)} ALTER COLUMN ${client(column)} TYPE BIGINT`;
+  }
+}
+
+/**
  * Initialize core database tables using raw SQL.
  *
  * Creates tables in dependency order:
@@ -237,7 +256,7 @@ export async function initDatabase() {
       symmetrical BOOLEAN DEFAULT false,
       board VARCHAR(81) NOT NULL,
       solution VARCHAR(81) NOT NULL,
-      techniques INTEGER DEFAULT 0,
+      techniques BIGINT DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     )
@@ -249,7 +268,7 @@ export async function initDatabase() {
       date DATE UNIQUE NOT NULL,
       board_uuid UUID REFERENCES boards(uuid) ON DELETE SET NULL,
       level INTEGER REFERENCES levels(level) ON DELETE SET NULL,
-      techniques INTEGER DEFAULT 0,
+      techniques BIGINT DEFAULT 0,
       board VARCHAR(81) NOT NULL,
       solution VARCHAR(81) NOT NULL,
       created_at TIMESTAMP DEFAULT NOW(),
@@ -298,13 +317,27 @@ export async function initDatabase() {
       board VARCHAR(81) NOT NULL,
       pencilmarks TEXT,
       solution VARCHAR(81) NOT NULL,
-      techniques_bitfield INTEGER NOT NULL,
+      techniques_bitfield BIGINT NOT NULL,
       primary_technique INTEGER NOT NULL,
       hint_data TEXT,
       source_board_uuid UUID REFERENCES boards(uuid) ON DELETE SET NULL,
       created_at TIMESTAMP DEFAULT NOW()
     )
   `;
+
+  // Migration: widen technique bitfields from INTEGER to BIGINT.
+  //
+  // Bits are 1 << techniqueId for ids 1-60, and the Drizzle schema declares
+  // these columns bigint, but this setup used to create them as INTEGER, so a
+  // database bootstrapped from it could not store technique bits >= 31. Must
+  // run after boards, dailies and technique_examples are created above.
+  await widenColumnToBigint(client, "boards", "techniques");
+  await widenColumnToBigint(client, "dailies", "techniques");
+  await widenColumnToBigint(
+    client,
+    "technique_examples",
+    "techniques_bitfield"
+  );
 
   await client`
     CREATE TABLE IF NOT EXISTS technique_practices (

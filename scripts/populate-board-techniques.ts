@@ -9,6 +9,7 @@
 
 import { db, boards } from "../src/db";
 import { eq } from "drizzle-orm";
+import { solverBitmask } from "../src/lib/bitmask";
 
 // Configuration
 const SOLVER_URL = process.env.SOLVER_URL || "http://localhost:8080";
@@ -18,11 +19,15 @@ const LIMIT = LIMIT_ARG !== -1 ? parseInt(process.argv[LIMIT_ARG + 1], 10) : 0;
 
 interface ValidateResponse {
   success: boolean;
-  error: { code: string; message: string } | null;
+  /** code is the solver's integer ErrorCode (0-3) */
+  error: { code: number; message: string } | null;
   data: {
     board: {
       level: number;
+      /** JSON number: rounded once a technique id >= 54 is set */
       techniques: number;
+      /** Same bitmask as a decimal string (newer solvers); exact */
+      techniques_bitmask?: string;
       board: {
         original: string;
         solution: string;
@@ -31,7 +36,7 @@ interface ValidateResponse {
   } | null;
 }
 
-async function validateBoard(original: string): Promise<{ techniques: number; level: number } | null> {
+async function validateBoard(original: string): Promise<{ techniques: bigint; level: number } | null> {
   const url = `${SOLVER_URL}/api/validate?original=${original}`;
 
   try {
@@ -47,7 +52,7 @@ async function validateBoard(original: string): Promise<{ techniques: number; le
     }
 
     return {
-      techniques: result.data.board.techniques,
+      techniques: solverBitmask(result.data.board),
       level: result.data.board.level,
     };
   } catch (error) {
@@ -71,7 +76,7 @@ async function main() {
       board: boards.board,
     })
     .from(boards)
-    .where(eq(boards.techniques, 0));
+    .where(eq(boards.techniques, 0n));
 
   if (LIMIT > 0) {
     query = query.limit(LIMIT) as typeof query;
@@ -95,7 +100,7 @@ async function main() {
     try {
       const result = await validateBoard(boardRecord.board);
 
-      if (result && result.techniques > 0) {
+      if (result && result.techniques > 0n) {
         if (!DRY_RUN) {
           await db
             .update(boards)

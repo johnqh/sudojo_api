@@ -23,8 +23,8 @@ import {
   successResponse,
   errorResponse,
   scrambleBoard,
-  type Daily,
 } from "@sudobility/sudojo_types";
+import { toBitmaskFields, type DailyResponse } from "../lib/bitmask";
 
 const dailiesRouter = new Hono();
 
@@ -32,7 +32,9 @@ const dailiesRouter = new Hono();
  * Gets a random puzzle with level 3-5, scrambles it, and returns as a fallback daily.
  * Used when no daily puzzle exists for a requested date.
  */
-async function getRandomFallbackPuzzle(date: string): Promise<Daily | null> {
+async function getRandomFallbackPuzzle(
+  date: string
+): Promise<DailyResponse | null> {
   // Get all levels 3, 4, or 5
   const eligibleLevels = await db
     .select()
@@ -70,7 +72,7 @@ async function getRandomFallbackPuzzle(date: string): Promise<Daily | null> {
     const puzzle = anyPuzzleRows[0]!;
     const scrambled = scrambleBoard(puzzle.board, puzzle.solution);
 
-    const fallbackDaily: Daily = {
+    const fallbackDaily: DailyResponse = toBitmaskFields({
       uuid: `fallback-${date}`,
       date,
       board_uuid: puzzle.uuid,
@@ -81,14 +83,14 @@ async function getRandomFallbackPuzzle(date: string): Promise<Daily | null> {
       solution: scrambled.solution,
       created_at: null,
       updated_at: null,
-    };
+    });
     return fallbackDaily;
   }
 
   const puzzle = puzzleRows[0]!;
   const scrambled = scrambleBoard(puzzle.board, puzzle.solution);
 
-  const fallbackDaily: Daily = {
+  const fallbackDaily: DailyResponse = toBitmaskFields({
     uuid: `fallback-${date}`,
     date,
     board_uuid: puzzle.uuid,
@@ -99,7 +101,7 @@ async function getRandomFallbackPuzzle(date: string): Promise<Daily | null> {
     solution: scrambled.solution,
     created_at: null,
     updated_at: null,
-  };
+  });
   return fallbackDaily;
 }
 
@@ -113,7 +115,8 @@ async function getRandomFallbackPuzzle(date: string): Promise<Daily | null> {
  */
 dailiesRouter.get("/", async c => {
   const rows = await db.select().from(dailies).orderBy(desc(dailies.date));
-  return c.json(successResponse(rows as Daily[]));
+  const data: DailyResponse[] = rows.map(toBitmaskFields);
+  return c.json(successResponse(data));
 });
 
 /**
@@ -139,7 +142,9 @@ dailiesRouter.get("/today", async c => {
     return c.json(successResponse(fallback));
   }
 
-  return c.json(successResponse(rows[0] as Daily));
+  const data: DailyResponse = toBitmaskFields(rows[0]!);
+
+  return c.json(successResponse(data));
 });
 
 /**
@@ -169,7 +174,9 @@ dailiesRouter.get(
       return c.json(successResponse(fallback));
     }
 
-    return c.json(successResponse(rows[0] as Daily));
+    const data: DailyResponse = toBitmaskFields(rows[0]!);
+
+    return c.json(successResponse(data));
   }
 );
 
@@ -191,7 +198,9 @@ dailiesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
     return c.json(errorResponse("Daily not found"), 404);
   }
 
-  return c.json(successResponse(rows[0] as Daily));
+  const data: DailyResponse = toBitmaskFields(rows[0]!);
+
+  return c.json(successResponse(data));
 });
 
 /**
@@ -225,7 +234,9 @@ dailiesRouter.post(
       })
       .returning();
 
-    return c.json(successResponse(rows[0] as Daily), 201);
+    const data: DailyResponse = toBitmaskFields(rows[0]!);
+
+    return c.json(successResponse(data), 201);
   }
 );
 
@@ -277,7 +288,9 @@ dailiesRouter.put(
       .where(eq(dailies.uuid, uuid))
       .returning();
 
-    return c.json(successResponse(rows[0] as Daily));
+    const data: DailyResponse = toBitmaskFields(rows[0]!);
+
+    return c.json(successResponse(data));
   }
 );
 
@@ -309,7 +322,9 @@ dailiesRouter.delete(
       return c.json(errorResponse("Daily not found"), 404);
     }
 
-    return c.json(successResponse(rows[0] as Daily));
+    const data: DailyResponse = toBitmaskFields(rows[0]!);
+
+    return c.json(successResponse(data));
   }
 );
 

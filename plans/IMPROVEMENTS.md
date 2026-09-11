@@ -1,5 +1,14 @@
 # Improvement Plans for @sudobility/sudojo_api
 
+> **Status note (2026-09):** parts of this backlog are stale.
+> - Rate limiting (`src/middleware/rateLimit.ts`, `src/routes/ratelimits.ts`) has been removed, so the rate-limit bullets in items 1, 3, 4, and 8 no longer apply.
+> - There are 15 route modules (with `strategies.ts` and `communities.ts`, without `ratelimits.ts`).
+> - Route tests are now `tests/*.db.test.ts` and run only via `bun run test:db`.
+> - The `verify` script from item 10 no longer exists in `package.json`.
+> - The package is the private `sudojo_api`, not `@sudobility/sudojo_api`.
+>
+> See `CLAUDE.md` and `docs/API.md` for current behavior.
+
 ## Priority 1 - High Impact
 
 ### 1. Add JSDoc to Route Handlers and Service Functions -- DONE

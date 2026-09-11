@@ -18,11 +18,10 @@ import { eq, sql, and, ne } from "drizzle-orm";
 import {
   TechniqueId,
   getTechniqueNameById,
-  techniqueToBit,
-  addTechnique,
   type SolveData,
   type SolverHintStep,
 } from "@sudobility/sudojo_types";
+import { bitmaskParam, techniqueBit } from "../src/lib/bitmask";
 
 // Configuration
 const SOLVER_URL = process.env.SOLVER_URL || "http://localhost:8080";
@@ -182,7 +181,7 @@ async function saveExample(
   board: string,
   pencilmarks: string | null,
   solution: string,
-  techniquesBitfield: number,
+  techniquesBitfield: bigint,
   primaryTechnique: TechniqueId,
   hintStep: SolverHintStep,
   sourceBoardUuid: string
@@ -209,14 +208,16 @@ async function saveExample(
 }
 
 async function processBoard(
-  boardRecord: { uuid: string; board: string; solution: string; techniques: number | null },
+  boardRecord: { uuid: string; board: string; solution: string; techniques: bigint | null },
   targetTechniques: Set<TechniqueId>
 ): Promise<number> {
   const original = boardRecord.board;
   // User input starts as all zeros (empty)
   let user = "0".repeat(81);
   let pencilmarks: string | null = null;
-  let techniquesBitfield = 0;
+  // bigint: addTechnique()/techniqueToBit() return JS numbers, which drop
+  // bits once a technique id >= 54 is set.
+  let techniquesBitfield = 0n;
   let examplesAdded = 0;
   let iterations = 0;
   const MAX_ITERATIONS = 200;
@@ -243,7 +244,7 @@ async function processBoard(
     if (!techniqueId) {
       console.warn(`Unknown technique: ${step.title}`);
     } else {
-      techniquesBitfield = addTechnique(techniquesBitfield, techniqueId);
+      techniquesBitfield |= techniqueBit(techniqueId);
 
       // Check if we need more examples for this technique
       if (targetTechniques.has(techniqueId) && needsMoreExamples(techniqueId)) {
@@ -313,7 +314,7 @@ async function main() {
     console.log(`  Current count: ${getCount(targetTechnique)}/${TARGET_PER_TECHNIQUE}`);
 
     // Find boards that use this technique
-    const bit = techniqueToBit(targetTechnique);
+    const bit = bitmaskParam(techniqueBit(targetTechnique));
     const boardsWithTechnique = await db
       .select({
         uuid: boards.uuid,
@@ -324,7 +325,7 @@ async function main() {
       .from(boards)
       .where(
         and(
-          ne(boards.techniques, 0),
+          ne(boards.techniques, 0n),
           sql`(${boards.techniques} & ${bit}) != 0`
         )
       )

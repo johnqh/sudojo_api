@@ -9,7 +9,7 @@
 
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { and, eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, sql, type SQL } from "drizzle-orm";
 import { db, boards, levels, techniques } from "../db";
 import {
   boardCreateSchema,
@@ -20,11 +20,16 @@ import { adminMiddleware } from "../middleware/auth";
 import {
   successResponse,
   errorResponse,
-  type Board,
   type BoardCountsData,
   type BoardCountsByTechniqueData,
   type UpdateStatsData,
 } from "@sudobility/sudojo_types";
+import {
+  bitmaskParam,
+  parseBitmask,
+  toBitmaskFields,
+  type BoardResponse,
+} from "../lib/bitmask";
 
 const boardsRouter = new Hono();
 
@@ -32,14 +37,17 @@ const boardsRouter = new Hono();
  * GET /api/v1/boards
  *
  * List boards with optional filtering and pagination.
+ * When several filters are given, a board must match all of them.
  *
  * @public No authentication required
  * @query level - Filter by difficulty level (integer)
- * @query technique_bit - Filter boards containing this technique bit (integer > 0)
- * @query techniques - Filter by exact techniques value (0 includes NULL)
+ * @query technique_bit - Filter boards with any of these technique bits set
+ *   (bitmask, decimal; 0 is ignored)
+ * @query techniques - Filter by exact techniques bitmask (decimal; 0 includes NULL)
  * @query limit - Maximum number of results (positive integer)
  * @query offset - Number of results to skip (non-negative integer)
  * @returns 200 - Array of board objects ordered by created_at desc
+ * @returns 400 - technique_bit or techniques is not a non-negative integer
  */
 boardsRouter.get("/", async c => {
   const levelParam = c.req.query("level");
@@ -48,38 +56,58 @@ boardsRouter.get("/", async c => {
   const limit = c.req.query("limit");
   const offset = c.req.query("offset");
 
-  let query = db.select().from(boards).$dynamic();
+  // Collect every filter and AND them. Calling .where() once per filter on the
+  // dynamic builder replaces the previous condition, so only the last applied.
+  const conditions: SQL[] = [];
 
   // Filter by level if provided
   if (levelParam) {
     const level = parseInt(levelParam, 10);
     if (!isNaN(level)) {
-      query = query.where(eq(boards.level, level));
+      conditions.push(eq(boards.level, level));
     }
   }
 
-  // Filter by technique bit if provided (boards that have this technique)
+  // Filter by technique bit if provided (boards that have this technique).
+  // Bitmasks are bound as bigint strings; a JS number loses bits above 2^53.
   if (techniqueBit) {
-    const bit = parseInt(techniqueBit, 10);
-    if (!isNaN(bit) && bit > 0) {
-      query = query.where(sql`(${boards.techniques} & ${bit}) != 0`);
+    const bit = parseBitmask(techniqueBit);
+    if (bit === null) {
+      return c.json(
+        errorResponse("Invalid technique_bit: must be a non-negative integer"),
+        400
+      );
+    }
+    if (bit > 0n) {
+      conditions.push(sql`(${boards.techniques} & ${bitmaskParam(bit)}) != 0`);
     }
   }
 
   // Filter by techniques value (e.g., techniques=0 for boards without techniques)
-  if (techniques !== undefined) {
-    const techniquesNum = parseInt(techniques, 10);
-    if (!isNaN(techniquesNum)) {
-      if (techniquesNum === 0) {
-        // Include both 0 and NULL
-        query = query.where(
-          sql`${boards.techniques} = 0 OR ${boards.techniques} IS NULL`
-        );
-      } else {
-        query = query.where(eq(boards.techniques, techniquesNum));
-      }
+  if (techniques) {
+    const value = parseBitmask(techniques);
+    if (value === null) {
+      return c.json(
+        errorResponse("Invalid techniques: must be a non-negative integer"),
+        400
+      );
+    }
+    if (value === 0n) {
+      // Include both 0 and NULL. Parenthesized so the OR stays grouped when
+      // ANDed with the other filters.
+      conditions.push(
+        sql`(${boards.techniques} = 0 OR ${boards.techniques} IS NULL)`
+      );
+    } else {
+      conditions.push(sql`${boards.techniques} = ${bitmaskParam(value)}`);
     }
   }
+
+  let query = db
+    .select()
+    .from(boards)
+    .where(and(...conditions))
+    .$dynamic();
 
   // Order and limit/offset
   query = query.orderBy(desc(boards.created_at));
@@ -97,7 +125,8 @@ boardsRouter.get("/", async c => {
   }
 
   const rows = await query;
-  return c.json(successResponse(rows as Board[]));
+  const data: BoardResponse[] = rows.map(toBitmaskFields);
+  return c.json(successResponse(data));
 });
 
 /**
@@ -191,7 +220,8 @@ boardsRouter.get("/random", async c => {
     return c.json(errorResponse("No boards found"), 404);
   }
 
-  return c.json(successResponse(rows[0] as Board));
+  const data: BoardResponse = toBitmaskFields(rows[0]!);
+  return c.json(successResponse(data));
 });
 
 /**
@@ -212,7 +242,8 @@ boardsRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
     return c.json(errorResponse("Board not found"), 404);
   }
 
-  return c.json(successResponse(rows[0] as Board));
+  const data: BoardResponse = toBitmaskFields(rows[0]!);
+  return c.json(successResponse(data));
 });
 
 /**
@@ -320,7 +351,8 @@ boardsRouter.post(
       })
       .returning();
 
-    return c.json(successResponse(rows[0] as Board), 201);
+    const data: BoardResponse = toBitmaskFields(rows[0]!);
+    return c.json(successResponse(data), 201);
   }
 );
 
@@ -370,7 +402,8 @@ boardsRouter.put(
       .where(eq(boards.uuid, uuid))
       .returning();
 
-    return c.json(successResponse(rows[0] as Board));
+    const data: BoardResponse = toBitmaskFields(rows[0]!);
+    return c.json(successResponse(data));
   }
 );
 
@@ -403,7 +436,8 @@ boardsRouter.delete(
       return c.json(errorResponse("Board not found"), 404);
     }
 
-    return c.json(successResponse(rows[0] as Board));
+    const data: BoardResponse = toBitmaskFields(rows[0]!);
+    return c.json(successResponse(data));
   }
 );
 

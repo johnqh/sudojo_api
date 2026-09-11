@@ -6,7 +6,7 @@
  */
 
 import { getRequiredEnv, getEnv } from "../lib/env-helper";
-import type { SolveData } from "@sudobility/sudojo_types";
+import type { SolveData, ValidateBoardData } from "@sudobility/sudojo_types";
 
 const SOLVER_URL = getRequiredEnv("SOLVER_URL");
 
@@ -14,10 +14,49 @@ const SOLVER_URL = getRequiredEnv("SOLVER_URL");
 // with SOLVER_TIMEOUT_MS for environments that need a longer budget.
 const SOLVER_TIMEOUT_MS = parseInt(getEnv("SOLVER_TIMEOUT_MS", "60000")!, 10);
 
+/**
+ * The solver's `error.code`: its C# `ErrorCode` enum, serialized as the
+ * integer value (not the `unknown_error`-style names in its EnumMember
+ * attributes).
+ */
+export const SolverErrorCode = {
+  Unknown: 0,
+  AutoPencilmarksRequired: 1,
+  CannotSolve: 2,
+  MultipleSolutions: 3,
+} as const;
+
+export interface SolverError {
+  /** Integer 0-3, see {@link SolverErrorCode}. */
+  code: number;
+  message: string;
+}
+
 export interface SolverResponse<T> {
   success: boolean;
-  error: { code: string; message: string } | null;
+  error: SolverError | null;
   data: T | null;
+}
+
+/**
+ * `data.board` of the solver's /validate and /generate, as parsed from JSON.
+ *
+ * `techniques` is the ulong bitmask as a JSON number, so `JSON.parse` has
+ * already rounded it once any technique id >= 54 is set. `techniques_bitmask`
+ * is the same value as a decimal string; older solver deployments omit it.
+ * Read the bitmask with `solverBitmask()` (src/lib/bitmask.ts), never from
+ * `techniques` directly.
+ *
+ * TODO(sudojo_types): drop the intersection once @sudobility/sudojo_types
+ * publishes `techniques_bitmask` on ValidateBoardData.
+ */
+export type SolverValidateBoard = ValidateBoardData & {
+  techniques_bitmask?: string;
+};
+
+/** `data` of the solver's /validate and /generate. */
+export interface SolverValidateData {
+  board: SolverValidateBoard;
 }
 
 export async function proxySolverRequest<T>(

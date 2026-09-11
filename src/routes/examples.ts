@@ -21,12 +21,16 @@ import { adminMiddleware } from "../middleware/auth";
 import {
   successResponse,
   errorResponse,
-  techniqueToBit,
   ALL_TECHNIQUE_IDS,
   type TechniqueId,
-  type TechniqueExample,
   type ExampleCountsData,
 } from "@sudobility/sudojo_types";
+import {
+  bitmaskParam,
+  techniqueBit,
+  toBitmaskFields,
+  type TechniqueExampleResponse,
+} from "../lib/bitmask";
 
 const examplesRouter = new Hono();
 
@@ -67,7 +71,9 @@ examplesRouter.get("/", async c => {
     ) {
       return c.json(errorResponse("Invalid technique ID"), 400);
     }
-    const bit = techniqueToBit(techniqueId as TechniqueId);
+    // Exact bigint bit, bound as a bigint string. techniqueToBit() returns a
+    // JS number, which postgres.js would send rounded for ids >= 54.
+    const bit = bitmaskParam(techniqueBit(techniqueId));
     rows = await db
       .select()
       .from(techniqueExamples)
@@ -80,7 +86,8 @@ examplesRouter.get("/", async c => {
       .orderBy(desc(techniqueExamples.created_at));
   }
 
-  return c.json(successResponse(rows as TechniqueExample[]));
+  const data: TechniqueExampleResponse[] = rows.map(toBitmaskFields);
+  return c.json(successResponse(data));
 });
 
 /**
@@ -156,7 +163,9 @@ examplesRouter.get("/random", async c => {
     return c.json(errorResponse("No examples found"), 404);
   }
 
-  return c.json(successResponse(rows[0] as TechniqueExample));
+  const data: TechniqueExampleResponse = toBitmaskFields(rows[0]!);
+
+  return c.json(successResponse(data));
 });
 
 /**
@@ -180,7 +189,9 @@ examplesRouter.get("/:uuid", zValidator("param", uuidParamSchema), async c => {
     return c.json(errorResponse("Example not found"), 404);
   }
 
-  return c.json(successResponse(rows[0] as TechniqueExample));
+  const data: TechniqueExampleResponse = toBitmaskFields(rows[0]!);
+
+  return c.json(successResponse(data));
 });
 
 /**
@@ -214,7 +225,9 @@ examplesRouter.post(
       })
       .returning();
 
-    return c.json(successResponse(rows[0] as TechniqueExample), 201);
+    const data: TechniqueExampleResponse = toBitmaskFields(rows[0]!);
+
+    return c.json(successResponse(data), 201);
   }
 );
 
@@ -271,7 +284,9 @@ examplesRouter.put(
       .where(eq(techniqueExamples.uuid, uuid))
       .returning();
 
-    return c.json(successResponse(rows[0] as TechniqueExample));
+    const data: TechniqueExampleResponse = toBitmaskFields(rows[0]!);
+
+    return c.json(successResponse(data));
   }
 );
 
@@ -303,7 +318,9 @@ examplesRouter.delete(
       return c.json(errorResponse("Example not found"), 404);
     }
 
-    return c.json(successResponse(rows[0] as TechniqueExample));
+    const data: TechniqueExampleResponse = toBitmaskFields(rows[0]!);
+
+    return c.json(successResponse(data));
   }
 );
 
