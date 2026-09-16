@@ -1,164 +1,131 @@
 /**
  * OCR Route - Extract Sudoku puzzles from images
  *
- * Uses @sudobility/sudojo_ocr for consistent OCR across all platforms.
+ * Two interchangeable backends, chosen by where the image came from:
+ * camera captures go straight to paddle_ocr, everything else prefers the
+ * sudojo_ocr_ml whole-board model and falls back to paddle.
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import Tesseract from "tesseract.js";
-import {
-  extractSudokuFromImage,
-  type TesseractModule,
-  type CanvasAdapter,
-} from "@sudobility/sudojo_ocr";
-import { createNodeAdapter } from "@sudobility/sudojo_ocr/node";
 import {
   successResponse,
   errorResponse,
   type OCRExtractData,
 } from "@sudobility/sudojo_types";
 import { extractViaML, isOCRMLEnabled } from "../services/ocr-ml-proxy";
+import { extractViaPaddle, isPaddleEnabled } from "../services/ocr-paddle";
 
 const ocrRouter = new Hono();
 
-// Singleton adapter for efficiency
-let nodeAdapter: CanvasAdapter | null = null;
+/** Minimum clues for a well-posed Sudoku. */
+const MIN_CLUES = 17;
 
-async function getAdapter(): Promise<CanvasAdapter> {
-  if (!nodeAdapter) {
-    nodeAdapter = await createNodeAdapter();
-  }
-  return nodeAdapter;
-}
-
-// Cast Tesseract to our minimal interface
-const tesseractModule = Tesseract as unknown as TesseractModule;
-
-// Request validation schema
 const extractSchema = z.object({
   image: z.string().min(1, "Image data is required"),
+  source: z.enum(["camera", "library"]).default("library"),
 });
 
-// OCRExtractData type imported from @sudobility/sudojo_types
+const TOO_FEW_CLUES =
+  "Could not find enough digits in the image. Please retake the photo with the whole puzzle in frame.";
+const UNAVAILABLE = "Image recognition is unavailable";
+const FAILED =
+  "Failed to process image. Please try again with a clearer photo.";
+
+/** Shared validation of a backend's board before it goes out. */
+function validated(c: Context, data: OCRExtractData) {
+  const puzzle = data.board.original;
+  if (!puzzle || puzzle.length !== 81) {
+    return c.json(
+      errorResponse("Could not extract a valid puzzle from the image"),
+      400
+    );
+  }
+  if (data.digitCount < MIN_CLUES) {
+    return c.json(errorResponse(TOO_FEW_CLUES), 400);
+  }
+  return c.json(successResponse(data));
+}
 
 /**
  * POST /extract
  * Extract a Sudoku puzzle from an image
  *
  * Request body:
- * - image: Base64-encoded image data (without data URL prefix)
+ * - image: Base64-encoded image data (a data URL prefix is accepted)
+ * - source: "camera" | "library" (default "library")
  *
  * Response:
  * - board: SolverBoard with original puzzle, user state, and pencilmark data
  * - confidence: OCR confidence score (0-100)
  * - digitCount: Number of digits recognized
+ * - engine: which backend answered
  */
-/** Minimum clues for a well-posed Sudoku. */
-const MIN_CLUES = 17;
-
 ocrRouter.post("/extract", zValidator("json", extractSchema), async c => {
-  try {
-    const { image } = c.req.valid("json");
+  const { image, source } = c.req.valid("json");
 
-    // Preferred path: the sudojo_ocr_ml whole-board model. Falls through to
-    // Tesseract when the service is not configured or is unreachable.
-    if (isOCRMLEnabled()) {
-      try {
-        const ml = await extractViaML(image, MIN_CLUES);
-        if (ml.debug) {
-          console.log(
-            `[OCR] ml detection=${ml.debug.detection} solvable=${ml.debug.solvable} ` +
-              `repaired=${ml.debug.constraintRepaired} ${ml.debug.elapsedMs}ms ` +
-              `digits=${ml.digitCount} conf=${ml.confidence}`
-          );
-        }
-        const data: OCRExtractData = {
-          board: ml.board,
-          confidence: ml.confidence,
-          digitCount: ml.digitCount,
-        };
-        return c.json(successResponse(data));
-      } catch (mlError) {
-        const status = (mlError as Error & { status?: number }).status;
-        if (status === 422) {
-          // The model read the image and found too few clues. Tesseract will
-          // not do better on the same pixels, so report it instead of retrying.
-          return c.json(
-            errorResponse(
-              "Could not find enough digits in the image. Please retake the photo with the whole puzzle in frame."
-            ),
-            400
-          );
-        }
-        console.warn(
-          "[OCR] ML service failed, falling back to Tesseract:",
-          mlError
+  // Camera: paddle only. PP-OCRv6 reads real-world photographs better than the
+  // whole-board model, which was trained on flat renders.
+  if (source === "camera") {
+    if (!isPaddleEnabled()) {
+      return c.json(errorResponse(UNAVAILABLE), 503);
+    }
+    try {
+      return validated(c, await extractViaPaddle(image));
+    } catch (error) {
+      console.error("[OCR] paddle failed:", error);
+      return c.json(errorResponse(FAILED), 500);
+    }
+  }
+
+  // Library: prefer the ML model, fall back to paddle.
+  let mlError: unknown = null;
+  if (isOCRMLEnabled()) {
+    try {
+      const ml = await extractViaML(image, MIN_CLUES);
+      if (ml.debug) {
+        console.log(
+          `[OCR] ml detection=${ml.debug.detection} solvable=${ml.debug.solvable} ` +
+            `repaired=${ml.debug.constraintRepaired} ${ml.debug.elapsedMs}ms ` +
+            `digits=${ml.digitCount} conf=${ml.confidence}`
         );
       }
-    }
-
-    // Convert base64 to buffer
-    // Handle both raw base64 and data URL format
-    let base64Data = image;
-    if (image.includes(",")) {
-      base64Data = image.split(",")[1] || image;
-    }
-
-    const imageBuffer = Buffer.from(base64Data, "base64");
-
-    // Get adapter
-    const adapter = await getAdapter();
-
-    // Run OCR
-    const result = await extractSudokuFromImage(
-      adapter,
-      imageBuffer,
-      tesseractModule,
-      {
-        skipBoardDetection: false,
-        preprocess: true,
-        minConfidence: 1,
-        cellMargin: 0.03,
-        recognizePencilmarks: true,
+      return validated(c, {
+        board: ml.board,
+        confidence: ml.confidence,
+        digitCount: ml.digitCount,
+        engine: "ml",
+      });
+    } catch (err) {
+      const status = (err as Error & { status?: number }).status;
+      if (status === 422) {
+        // The model read the image and found too few clues. Another engine will
+        // not do better on the same pixels, so report it instead of retrying.
+        return c.json(errorResponse(TOO_FEW_CLUES), 400);
       }
-    );
-
-    // Validate result
-    const puzzle = result.board.original;
-    if (!puzzle || puzzle.length !== 81) {
-      return c.json(
-        errorResponse("Could not extract a valid puzzle from the image"),
-        400
-      );
+      mlError = err;
+      console.warn("[OCR] ML service failed, falling back to paddle:", err);
     }
+  }
 
-    // Check minimum clues
-    if (result.digitCount < MIN_CLUES) {
-      return c.json(
-        errorResponse(
-          `Only ${result.digitCount} clues detected, minimum ${MIN_CLUES} required for a valid puzzle`
-        ),
-        400
-      );
+  if (!isPaddleEnabled()) {
+    if (mlError) {
+      console.error("[OCR] ML failed and paddle is not configured:", mlError);
     }
+    return c.json(errorResponse(UNAVAILABLE), 503);
+  }
 
-    const data: OCRExtractData = {
-      board: result.board,
-      confidence: result.confidence,
-      digitCount: result.digitCount,
-    };
-
-    return c.json(successResponse(data));
+  try {
+    return validated(c, await extractViaPaddle(image));
   } catch (error) {
-    console.error("[OCR] Extraction failed:", error);
-    return c.json(
-      errorResponse(
-        "Failed to process image. Please try again with a clearer photo."
-      ),
-      500
-    );
+    // Both backends failed. Report the ML error, the preferred engine's, since
+    // its message is the more specific one.
+    console.error("[OCR] paddle failed:", error);
+    if (mlError) {
+      console.error("[OCR] ML error was:", mlError);
+    }
+    return c.json(errorResponse(FAILED), 500);
   }
 });
 

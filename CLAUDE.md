@@ -59,7 +59,9 @@ src/routes/index.ts  mounts 15 routers (levels, techniques, strategies, learning
    ▼
 db/ (Drizzle + postgres.js) ── PostgreSQL (DATABASE_URL)
 services/solver-proxy.ts ── GET ${SOLVER_URL}/api/{solve,validate,generate}   (sudojo_solver, C#)
-services/ocr-ml-proxy.ts ── POST ${OCR_ML_URL}/v1/ocr (sudojo_ocr_ml) → fallback Tesseract via @sudobility/sudojo_ocr
+routes/ocr.ts ───────────── dispatch by `source`: camera → paddle; library → ML, then paddle
+services/ocr-ml-proxy.ts ── POST ${OCR_ML_URL}/v1/ocr (sudojo_ocr_ml) → OCRExtractData
+services/ocr-paddle.ts ──── @sudobility/sudojo_ocr crops the board → POST ${PADDLE_OCR_URL}/v1/ocr
 services/firebase.ts     ── @sudobility/auth_service (firebase-admin), initialized at import time
 middleware/subscription.ts ── @sudobility/subscription_service (RevenueCat), lazily, only if REVENUECAT_API_KEY set
 ```
@@ -98,7 +100,6 @@ tests/
 └── fixtures/technique-practices.json   # Written by scripts/export-technique-fixtures.ts
 docs/API.md                # Route reference
 plans/IMPROVEMENTS.md      # Improvement backlog (partly stale)
-eng.traineddata            # Tesseract English model, read from the working directory by tesseract.js
 Dockerfile                 # oven/bun:1 build (tsc check) → oven/bun:1-slim runtime, EXPOSE 8010
 .github/workflows/ci-cd.yml  # Calls johnqh/workflows unified-cicd.yml
 ```
@@ -118,7 +119,8 @@ Dockerfile                 # oven/bun:1 build (tsc check) → oven/bun:1-slim ru
 | `REVENUECAT_API_KEY` | no | subscription.ts | Read by `users.ts` only. Unset: `/users/:id/subscriptions` returns 500, and `DELETE /users/:id` skips the active-subscription check |
 | `ADMIN_API_KEY` | no | optionalAuth.ts | On `solver/solve`, a matching `X-API-Key` header or `?api_key=` skips token verification and the caller is treated as anonymous. It no longer unlocks anything, because hints are unrestricted. Kept so behaviour stays the same. `sudojo_app_rn/scripts/record_technique.sh` sends it |
 | `SOLUTION_ENCRYPTION_KEY` | no | solution-crypto.ts | 64 hex chars. Unset: solutions are sent in plaintext |
-| `OCR_ML_URL`, `OCR_ML_TIMEOUT_MS` | no | ocr-ml-proxy.ts | Unset URL: Tesseract only. Timeout default `20000` |
+| `OCR_ML_URL`, `OCR_ML_TIMEOUT_MS` | no | ocr-ml-proxy.ts | Unset URL: paddle only. Timeout default `20000` |
+| `PADDLE_OCR_URL`, `PADDLE_OCR_TIMEOUT_MS` | no | ocr-paddle.ts | Unset URL: camera scans 503, library scans use ML alone. Timeout default `30000` |
 | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | no | firebase.ts | Apple token revocation on account delete. All four must be set |
 | `TEST_DATABASE_URL` | tests | tests/setup.db.ts | Must use host exactly `localhost` (not `127.0.0.1`) |
 
@@ -155,7 +157,8 @@ Dockerfile                 # oven/bun:1 build (tsc check) → oven/bun:1-slim ru
 | `sudojo_solver` (C# `SudokuApi`) | API → solver | `GET ${SOLVER_URL}/api/solve?original&user&autopencilmarks&pencilmarks[&techniques]`, `/api/validate?original[&brutalForce]`, `/api/generate[?symmetrical]`. Envelope `{ success, error: {code,message}, data }`, where `code` is an integer 0–3 (`SolverErrorCode` in `solver-proxy.ts`), not a string. `/validate` and `/generate` `data.board` carries `techniques` (a JSON number, rounded above 2^53) and `techniques_bitmask` (the same ulong as a decimal string). Read it with `solverBitmask()`, which prefers the string and falls back to `BigInt(techniques)` for older solvers (may lack low bits, never invents any; never use `String(techniques)`: `String(2 ** 57)` is 2^57 − 2). `hints.level === 0` means an auto-pencilmark hint. Technique ids 1–60 and levels 1–12 mirror `SudokuEngine/SudokuDefines.h` and `GetLevel`. `scripts/seed-levels-techniques.ts` and `backfill-board-difficulty.ts` follow its `difficulty_score` |
 | `sudojo_ocr_ml` | API → ML | `POST ${OCR_ML_URL}/v1/ocr` `{ image, min_clues }` → `OCRExtractData` plus `debug`. 422 means too few clues |
 | `@sudobility/sudojo_types` `^1.2.67` | dep | Response envelope helpers, all entity/response types, `EMPTY_BOARD`, `scrambleBoard`, `techniqueToBit`. New shared shapes go there first. The `_bitmask` response fields are not in the published version yet, so `src/lib/bitmask.ts` extends `Board` / `Daily` / `TechniqueExample` / `ValidateBoardData` locally with intersection types (`BoardResponse` etc., marked `TODO(sudojo_types)`). Its `techniqueToBit` / `addTechnique` / `hasTechnique` return or take JS numbers, so they are lossy for ids ≥ 54. Use `techniqueBit()` from `src/lib/bitmask.ts` instead |
-| `@sudobility/sudojo_ocr` `^1.1.42` | dep | Tesseract pipeline (`extractSudokuFromImage`, `/node` canvas adapter) |
+| `@sudobility/sudojo_ocr` | dep | Board detection + crop, then recognition via paddle_ocr (`extractSudokuFromImage`, `/node` canvas adapter). No Tesseract |
+| `paddle_ocr` | API → OCR | `POST ${PADDLE_OCR_URL}/v1/ocr` `{ image }` → `{ blocks[] }`. Generic text OCR; sudojo_ocr maps blocks to the 81 cells |
 | `@sudobility/auth_service` `^1.1.21`, `@sudobility/subscription_service` `^1.0.23`, `@sudobility/types` `^1.9.67` | dep | Firebase verify/admin/delete, RevenueCat, `UserStatus`/`NONE_ENTITLEMENT` |
 | `@sudobility/test-db-guard` `1.0.2` | devDep | `scrubDatabaseUrl()` / `setupTestDatabase()` localhost guard |
 | `@sudobility/sudojo_client` | consumer | Typed endpoint map in `sudojo_client/src/network/sudojo-client.ts`. Keep it in sync when you add or rename routes |
@@ -200,7 +203,6 @@ CI (`.github/workflows/ci-cd.yml` → `johnqh/workflows/.github/workflows/unifie
 - `GET` responses under `/api/v1` are re-serialized by the encryption middleware whenever a key is set. Clients must decrypt `enc:` values.
 - Health `version` is hard-coded `"1.0.0"`. `/health` does not check the DB.
 - Scripts in `scripts/` and `src/scripts/` write to whatever `DATABASE_URL` resolves to, and Bun loads `.env` (remote). `update-technique-dependencies.ts` says to run with `bunx tsx`.
-- `eng.traineddata` is not copied into the Docker image. A container falls back to tesseract.js's default language download on the first Tesseract OCR call.
 - `.claude/settings.local.json` is committed even though `.gitignore` lists it.
 
 ## Common Tasks
