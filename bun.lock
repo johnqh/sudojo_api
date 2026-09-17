@@ -9,7 +9,7 @@
         "@napi-rs/canvas": "^0.1.68",
         "@sudobility/auth_service": "^1.1.21",
         "@sudobility/subscription_service": "^1.0.23",
-        "@sudobility/sudojo_ocr": "^1.1.45",
+        "@sudobility/sudojo_ocr": "^1.1.46",
         "@sudobility/sudojo_types": "^1.2.70",
         "@sudobility/types": "^1.9.67",
         "drizzle-orm": "^0.45.0",
@@ -262,7 +262,7 @@
 
     "@sudobility/subscription_service": ["@sudobility/subscription_service@1.0.23", "", {}, "sha512-IbpWkMvyAirLZzX+7M1T74fVebWmyX/NCjyY2BCqL2jRQZGCEqb8JCVIYHXvqQd8gwx1E0foz+E9yb0SEWbngw=="],
 
-    "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.45", "", { "peerDependencies": { "@sudobility/sudojo_types": "^1.2.70" } }, "sha512-WrrpskpiK8DglCjy5zb/3sdUXNyT290rZEnM1qGZyQAwE328K9IWk7lCrc9t9Q2k50xlgWJ6Dw5DE5h/+6IX6w=="],
+    "@sudobility/sudojo_ocr": ["@sudobility/sudojo_ocr@1.1.46", "", { "peerDependencies": { "@napi-rs/canvas": "*", "@sudobility/sudojo_types": "^1.2.70" }, "optionalPeers": ["@napi-rs/canvas"] }, "sha512-xVSWjvlXGXH2xd7y1u+0oiltMibCZBh1LtFmekoVQ8c9qY90nJ61O74uO/6QxC0wvZbNOfUScwsIJLkRuKDaog=="],
 
     "@sudobility/sudojo_types": ["@sudobility/sudojo_types@1.2.70", "", { "peerDependencies": { "@sudobility/types": "^1.9.67" } }, "sha512-Trg11uJWA1o4J4RcZtgUwyoSHq3jwdGzrkuwT+W6E1P3xBtcIp/5+XUCCvkpC7sisd7gaXS0SYrE5J+561lKlg=="],
 
