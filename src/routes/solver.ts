@@ -35,6 +35,7 @@ import {
   type SolverValidateData,
 } from "../services/solver-proxy";
 import { toValidateResponseData } from "../lib/bitmask";
+import { levelForTechnique, MIN_LEVEL } from "../lib/levels";
 
 import { optionalAuthMiddleware } from "../middleware/optionalAuth";
 
@@ -149,8 +150,14 @@ async function handleSolveRequest(c: Context) {
         techniques
       );
 
-      // If technique-filtered solve fails, or solve contains an auto pencilmark hint, fallback to generic solve
-      if (!result.success || !result.data || result.data.hints?.level === 0) {
+      // If technique-filtered solve fails, or solve contains an auto pencilmark
+      // hint (technique 0), fallback to generic solve. Keyed off `technique`
+      // rather than the solver's `level`, which the API no longer trusts.
+      if (
+        !result.success ||
+        !result.data ||
+        result.data.hints?.technique === 0
+      ) {
         result = await callSolver(original, user, autopencilmarks, pencilmarks);
       }
     } else {
@@ -165,9 +172,19 @@ async function handleSolveRequest(c: Context) {
       return c.json(errorResponse(errorMsg), 400);
     }
 
+    // The hint's level comes from src/lib/levels.ts, not from the solver: a
+    // hint is as hard as the technique it demonstrates. Overwrite it on the
+    // response too, so clients (and the points below) see one level system.
+    // An auto-pencilmark hint has technique 0 and keeps level 0.
+    if (result.data.hints) {
+      const hintTechnique = result.data.hints.technique;
+      result.data.hints.level =
+        hintTechnique > 0 ? (levelForTechnique(hintTechnique) ?? MIN_LEVEL) : 0;
+    }
+
     // Track hint usage for gamification (if user is authenticated)
     const firebaseUser = c.get("firebaseUser") as { uid: string } | undefined;
-    const techniqueLevel = result.data.hints?.level ?? 1;
+    const techniqueLevel = result.data.hints?.level || MIN_LEVEL;
     let pointsEarned: { points: number; techniqueLevel: number } | undefined;
 
     if (firebaseUser?.uid) {

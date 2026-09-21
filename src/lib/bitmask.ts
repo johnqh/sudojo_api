@@ -16,6 +16,7 @@
  */
 
 import { sql, type SQL } from "drizzle-orm";
+import { levelForBitmask } from "./levels";
 import type {
   Board,
   Daily,
@@ -122,6 +123,13 @@ export function solverBitmask(board: {
  * bitmask read with {@link solverBitmask}, then split into `techniques`
  * (number) and `techniques_bitmask` (exact string).
  *
+ * The board's `level` is **re-derived here** from the bitmask via
+ * {@link levelForBitmask} and overwrites whatever the solver sent. The 1-12
+ * scale is owned by src/lib/levels.ts, so a solver rebalance (or an older
+ * deployment answering) can no longer change the level a client sees. This is
+ * the only place /validate and /generate build their board, so it is the only
+ * place that needs the override.
+ *
  * @throws Error if the solver sent no valid bitmask
  */
 export function toValidateResponseData<
@@ -129,13 +137,15 @@ export function toValidateResponseData<
     board: ValidateBoardData & { techniques_bitmask?: string | null };
   },
 >(data: D): Omit<D, "board"> & ValidateResponseData {
+  const techniques = solverBitmask(data.board);
   // toBitmaskFields overwrites the solver's techniques_bitmask with the value
   // actually used, so the response is consistent whichever field won.
   return {
     ...data,
     board: toBitmaskFields({
       ...data.board,
-      techniques: solverBitmask(data.board),
+      techniques,
+      level: levelForBitmask(techniques),
     }),
   };
 }

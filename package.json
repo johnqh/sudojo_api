@@ -1,6 +1,6 @@
 {
   "name": "sudojo_api",
-  "version": "1.0.165",
+  "version": "1.0.166",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -11,6 +11,7 @@
     "build": "bun build src/index.ts --outdir dist --target bun",
     "build:compile": "bun build src/index.ts --compile --outfile dist/server",
     "clean": "rm -rf dist",
+    "test": "vitest run",
     "test:unit": "vitest run",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",

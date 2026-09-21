@@ -84,10 +84,12 @@ src/
 ├── schemas/index.ts       # All Zod request schemas
 ├── lib/                   # env-helper.ts, solution-crypto.ts, localization.ts (i18n string keys),
 │                          # bitmask.ts (technique bitmask parse / SQL bind / response fields + types)
+│                          # levels.ts (technique -> level 1-12: THE source of truth, see Difficulty Levels)
 └── scripts/               # One-off community seeders (seed-communities*.ts, update-community-icons.ts)
 scripts/                   # One-off data scripts, run with `bun run scripts/<name>.ts`; they write to DATABASE_URL
                            # (import-*, seed-levels-techniques, populate-*, backfill-board-difficulty,
-                           #  export-technique-fixtures, reset-*, clear-examples-practices)
+                           #  export-technique-fixtures, reset-*, clear-examples-practices,
+                           #  verify-technique-levels, repairs/)
 tests/
 ├── unit/                  # env-helper, schemas, bitmask, db-init (setup SQL vs Drizzle schema),
 │                          # boards-route + bitmask-routes + solver-unrestricted (real routes over
@@ -150,11 +152,46 @@ Dockerfile                 # oven/bun:1 build (tsc check) → oven/bun:1-slim ru
 - `initDatabase()` also seeds data idempotently: strategy rows, technique → strategy mappings, and level `entitlement`/`offer_id`. When you add a column, put the `ALTER` **after** the table's `CREATE` (commit 743dbc3 fixed a fresh-DB bootstrap break caused by that ordering).
 - Technique bitmasks use bit `1n << BigInt(techniqueId)` (ids 1–60), so values exceed 2^53. `boards.techniques`, `dailies.techniques`, `technique_examples.techniques_bitfield` and `game_sessions.techniques` are `bigint({ mode: "bigint" })`: JS `bigint` in and out. `user_stats.total_points` is not a bitmask and stays `mode: "number"`. SQL counting uses `1::bigint << t`. See Conventions for the bitmask rules.
 
+## Difficulty Levels
+
+**`src/lib/levels.ts` is the single source of truth for the 1-12 scale.** The API
+does **not** read `level` from the solver. `TECHNIQUE_LEVELS` maps each technique
+id 1-60 to a level (and mirrors the solver's `difficulty_score`), and everything
+else derives from it:
+
+| What | How | Where |
+| ---- | --- | ----- |
+| board level (`/solver/validate`, `/solver/generate`) | `levelForBitmask(mask)` — max level over the techniques bitmask | `toValidateResponseData()` in `src/lib/bitmask.ts` |
+| hint level (`/solver/solve`) | `levelForTechnique(hints.technique)` | `handleSolveRequest()` in `src/routes/solver.ts` |
+| `boards.level` column | `levelForBitmask()` at backfill time | `scripts/backfill-board-difficulty.ts` |
+| `techniques.level` column | denormalised copy of the map | `scripts/verify-technique-levels.ts` |
+
+The solver still *sends* a `level`; it is overwritten. That is deliberate — it
+means a solver rebalance, or an old deployment answering, can no longer change
+the level a client sees, and a level change ships from this repo alone.
+
+**Invariant:** `level` must be a non-decreasing banding of the solver's
+`difficulty_score`, because the solver tries techniques easiest-first by score.
+If a higher-scoring technique sat at a lower level, a board could be labelled
+easier than the hardest step its solve needed. `src/lib/levels.test.ts` enforces
+this, that all 12 levels are non-empty, and that no technique sits below a
+technique it builds on.
+
+**To change a technique's level:**
+
+1. Edit `TECHNIQUE_LEVELS` in `src/lib/levels.ts`.
+2. `bun run test:unit` — the invariants above must still hold.
+3. `bun run scripts/verify-technique-levels.ts --fix` — sync `techniques.level`.
+4. `bun run scripts/backfill-board-difficulty.ts` — re-derive every board's level
+   (~2h against the production solver, which saturates at ~17 boards/s).
+
+Nothing needs to ship in `sudojo_solver`.
+
 ## Cross-Repo Contracts
 
 | Sibling | Direction | Contract |
 |---------|-----------|----------|
-| `sudojo_solver` (C# `SudokuApi`) | API → solver | `GET ${SOLVER_URL}/api/solve?original&user&autopencilmarks&pencilmarks[&techniques]`, `/api/validate?original[&brutalForce]`, `/api/generate[?symmetrical]`. Envelope `{ success, error: {code,message}, data }`, where `code` is an integer 0–3 (`SolverErrorCode` in `solver-proxy.ts`), not a string. `/validate` and `/generate` `data.board` carries `techniques` (a JSON number, rounded above 2^53) and `techniques_bitmask` (the same ulong as a decimal string). Read it with `solverBitmask()`, which prefers the string and falls back to `BigInt(techniques)` for older solvers (may lack low bits, never invents any; never use `String(techniques)`: `String(2 ** 57)` is 2^57 − 2). `hints.level === 0` means an auto-pencilmark hint. Technique ids 1–60 and levels 1–12 mirror `SudokuEngine/SudokuDefines.h` and `GetLevel`. `scripts/seed-levels-techniques.ts` and `backfill-board-difficulty.ts` follow its `difficulty_score` |
+| `sudojo_solver` (C# `SudokuApi`) | API → solver | `GET ${SOLVER_URL}/api/solve?original&user&autopencilmarks&pencilmarks[&techniques]`, `/api/validate?original[&brutalForce]`, `/api/generate[?symmetrical]`. Envelope `{ success, error: {code,message}, data }`, where `code` is an integer 0–3 (`SolverErrorCode` in `solver-proxy.ts`), not a string. `/validate` and `/generate` `data.board` carries `techniques` (a JSON number, rounded above 2^53) and `techniques_bitmask` (the same ulong as a decimal string). Read it with `solverBitmask()`, which prefers the string and falls back to `BigInt(techniques)` for older solvers (may lack low bits, never invents any; never use `String(techniques)`: `String(2 ** 57)` is 2^57 − 2). `hints.technique === 0` means an auto-pencilmark hint. Technique ids 1–60 mirror `SudokuEngine/SudokuDefines.h`. **The solver's `level` is ignored:** this API re-derives every level from `src/lib/levels.ts` (see [Difficulty Levels](#difficulty-levels)). The solver's `difficulty_score` is still passed through and is what the level bands are built on |
 | `sudojo_ocr_ml` | API → ML | `POST ${OCR_ML_URL}/v1/ocr` `{ image, min_clues }` → `OCRExtractData` plus `debug`. 422 means too few clues |
 | `@sudobility/sudojo_types` `^1.2.67` | dep | Response envelope helpers, all entity/response types, `EMPTY_BOARD`, `scrambleBoard`, `techniqueToBit`. New shared shapes go there first. The `_bitmask` response fields are not in the published version yet, so `src/lib/bitmask.ts` extends `Board` / `Daily` / `TechniqueExample` / `ValidateBoardData` locally with intersection types (`BoardResponse` etc., marked `TODO(sudojo_types)`). Its `techniqueToBit` / `addTechnique` / `hasTechnique` return or take JS numbers, so they are lossy for ids ≥ 54. Use `techniqueBit()` from `src/lib/bitmask.ts` instead |
 | `@sudobility/sudojo_ocr` | dep | Board detection + crop, then recognition via paddle_ocr (`extractSudokuFromImage`, `/node` canvas adapter). No Tesseract |

@@ -3,11 +3,17 @@
  *
  * Re-validates every board through the solver /validate endpoint and updates
  * `level`, `techniques`, and the new `difficulty_score` column in one pass.
+ * Rows whose three derived values already match the solver are left alone, so
+ * `updated_at` keeps meaning "this board was actually reclassified".
  *
  * Why all three: the deployed solver changed (rebalanced technique levels +
  * difficulty-ordered easiest-first solving), so a board's hardest technique
  * (level), the set of techniques it uses (bitfield), and the summed effort
  * (difficulty_score) can all differ from the stored values.
+ *
+ * `level` is computed from the techniques bitmask via src/lib/levels.ts, NOT
+ * read from the solver response, so the column always agrees with the level the
+ * API serves. Re-run this after editing that map.
  *
  * REQUIRES the solver deployment that returns `difficulty_score` from
  * /api/validate (SudokuApi ValidateController). Until that is live, this script
@@ -23,6 +29,7 @@
 import { db, boards } from "../src/db";
 import { eq, sql } from "drizzle-orm";
 import { solverBitmask } from "../src/lib/bitmask";
+import { levelForBitmask } from "../src/lib/levels";
 
 const SOLVER_URL = process.env.SOLVER_URL || "http://localhost:8080";
 const DRY_RUN = process.argv.includes("--dry-run");
@@ -85,7 +92,9 @@ async function validateBoard(original: string): Promise<ValidateResult> {
         return { error: "techniques=0 (not rule-solvable)" };
       }
       return {
-        level: b.level,
+        // Level comes from src/lib/levels.ts, never from the solver: that map
+        // is the single source of truth for the 1-12 scale.
+        level: levelForBitmask(techniques),
         techniques,
         difficulty_score: b.difficulty_score ?? 0,
       };
@@ -131,7 +140,13 @@ async function main() {
   }
 
   let query = db
-    .select({ uuid: boards.uuid, board: boards.board })
+    .select({
+      uuid: boards.uuid,
+      board: boards.board,
+      level: boards.level,
+      techniques: boards.techniques,
+      difficulty_score: boards.difficulty_score,
+    })
     .from(boards);
   if (ONLY_MISSING) query = query.where(eq(boards.difficulty_score, 0)) as typeof query;
   query = query.orderBy(boards.uuid) as typeof query;
@@ -145,7 +160,11 @@ async function main() {
   }
 
   let processed = 0,
-    updated = 0;
+    updated = 0,
+    unchanged = 0,
+    levelChanged = 0,
+    techniquesChanged = 0,
+    scoreChanged = 0;
   const failures: Array<{ uuid: string; board: string; reason: string }> = [];
 
   // Simple fixed-size worker pool over the row list.
@@ -157,24 +176,38 @@ async function main() {
       const r = await validateBoard(rec.board);
       processed++;
       if (isOk(r)) {
-        if (!DRY_RUN) {
-          await db
-            .update(boards)
-            .set({
-              level: r.level,
-              techniques: r.techniques,
-              difficulty_score: r.difficulty_score,
-              updated_at: new Date(),
-            })
-            .where(eq(boards.uuid, rec.uuid));
+        const changed =
+          r.level !== rec.level ||
+          r.techniques !== (rec.techniques ?? 0n) ||
+          r.difficulty_score !== rec.difficulty_score;
+        if (!changed) {
+          unchanged++;
+        } else {
+          if (!DRY_RUN) {
+            await db
+              .update(boards)
+              .set({
+                level: r.level,
+                techniques: r.techniques,
+                difficulty_score: r.difficulty_score,
+                updated_at: new Date(),
+              })
+              .where(eq(boards.uuid, rec.uuid));
+          }
+          if (r.level !== rec.level) levelChanged++;
+          if (r.techniques !== (rec.techniques ?? 0n)) techniquesChanged++;
+          if (r.difficulty_score !== rec.difficulty_score) scoreChanged++;
+          updated++;
         }
-        updated++;
       } else {
         failures.push({ uuid: rec.uuid, board: rec.board, reason: r.error });
         console.error(`  FAIL ${rec.uuid}: ${r.error}  board=${rec.board}`);
       }
       if (processed % 500 === 0 || processed === rows.length) {
-        console.log(`[${processed}/${rows.length}] updated=${updated} failed=${failures.length}`);
+        console.log(
+          `[${processed}/${rows.length}] changed=${updated} unchanged=${unchanged} failed=${failures.length}` +
+            ` (level=${levelChanged} techniques=${techniquesChanged} score=${scoreChanged})`
+        );
       }
     }
   }
@@ -193,7 +226,14 @@ async function main() {
   }
 
   console.log("\n====================================================");
-  console.log(`Processed ${processed}, updated ${updated}, failed ${failures.length}`);
+  console.log(
+    `Processed ${processed}, changed ${updated}, unchanged ${unchanged}, failed ${failures.length}`
+  );
+  console.log(
+    `  level changed:      ${levelChanged}\n` +
+      `  techniques changed: ${techniquesChanged}\n` +
+      `  score changed:      ${scoreChanged}`
+  );
   if (failures.length > 0) {
     console.error(`\n${failures.length} board(s) FAILED (left unchanged):`);
     for (const f of failures) console.error(`  ${f.uuid}  ${f.reason}  ${f.board}`);
