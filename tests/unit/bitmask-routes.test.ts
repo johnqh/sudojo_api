@@ -403,10 +403,10 @@ describe("solver validate/generate pass-through", () => {
       expect(body.data.board.techniques_bitmask).toBe(HIGH_STRING);
       expect(body.data.board.techniques).toBe(HIGH_NUMBER);
       // The level is DERIVED from the bitmask by src/lib/levels.ts, not passed
-      // through from the solver: this mask is bit 60 (Grouped X-Cycles, L10)
-      // plus bit 1 (Full House, L1), so the level is 10 even though the stub
+      // through from the solver: this mask is bit 60 (Grouped X-Cycles, L11)
+      // plus bit 1 (Full House, L1), so the level is 11 even though the stub
       // solver reported 12.
-      expect(body.data.board.level).toBe(10);
+      expect(body.data.board.level).toBe(11);
     }
   );
 

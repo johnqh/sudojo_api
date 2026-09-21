@@ -20,8 +20,8 @@ const solverData = (board: {
 
 describe("toValidateResponseData level override", () => {
   it("replaces the solver's level with the one derived from the bitmask", () => {
-    // Bit 6 = Locked Candidates = level 3. The solver claims level 9; the API
-    // owns the scale, so the response must say 3.
+    // Bit 6 = Locked Candidates = level 4. The solver claims level 9; the API
+    // owns the scale, so the response must say 4.
     const mask = (1n << 1n) | (1n << 3n) | (1n << 6n);
     const out = toValidateResponseData(
       solverData({
@@ -30,7 +30,7 @@ describe("toValidateResponseData level override", () => {
         techniques_bitmask: mask.toString(),
       })
     );
-    expect(out.board.level).toBe(3);
+    expect(out.board.level).toBe(4);
   });
 
   it("derives level 12 even when the solver under-reports it", () => {
@@ -49,7 +49,7 @@ describe("toValidateResponseData level override", () => {
 
   it("uses the exact bitmask string, not the lossy number, to pick the level", () => {
     // Bit 60 (Grouped X-Cycles, L10) + bit 1 (Full House, L1). As a JS number
-    // the low bit is lost, but the level must still come out as 10 and the
+    // the low bit is lost, but the level must still come out as 11 and the
     // companion string must stay exact.
     const mask = (1n << 1n) | (1n << 60n);
     expect(mask).toBe(1152921504606846978n);
@@ -60,17 +60,17 @@ describe("toValidateResponseData level override", () => {
         techniques_bitmask: mask.toString(),
       })
     );
-    expect(out.board.level).toBe(10);
+    expect(out.board.level).toBe(11);
     expect(out.board.techniques_bitmask).toBe("1152921504606846978");
   });
 
   it("falls back to the numeric bitmask when the solver sends no string", () => {
-    // An older solver deployment: no techniques_bitmask. Bit 24 = Skyscraper = L4.
+    // An older solver deployment: no techniques_bitmask. Bit 24 = Skyscraper = L6.
     const mask = (1n << 3n) | (1n << 24n);
     const out = toValidateResponseData(
       solverData({ level: 1, techniques: Number(mask) })
     );
-    expect(out.board.level).toBe(4);
+    expect(out.board.level).toBe(6);
   });
 
   it("derives a level even when the solver sends no level at all", () => {
@@ -91,7 +91,7 @@ describe("toValidateResponseData level override", () => {
         typeof toValidateResponseData
       >[0]["board"],
     });
-    expect(out.board.level).toBe(3);
+    expect(out.board.level).toBe(4);
   });
 
   it("reports level 1 for a board that needed no technique", () => {

@@ -96,6 +96,17 @@ describe("TECHNIQUE_LEVELS table", () => {
     }
   });
 
+  it("scores Locked Candidates and UR Type 1 above both pairs, at level 4", () => {
+    const score = (id: number) => scoreForTechnique(id)!;
+    expect(score(6)).toBeGreaterThan(score(5)); // Naked Pair
+    expect(score(6)).toBeGreaterThan(score(4)); // Hidden Pair
+    expect(score(30)).toBeGreaterThan(score(4));
+    expect(levelForTechnique(6)).toBe(4);
+    expect(levelForTechnique(30)).toBe(4);
+    // Full House 1, the other singles 2, the pairs 3.
+    expect([1, 3, 2, 5, 4].map(levelForTechnique)).toEqual([1, 2, 2, 3, 3]);
+  });
+
   it("gives equal-score techniques the same level", () => {
     const byScore = new Map<number, { level: number; name: string }[]>();
     for (const entry of Object.values(TECHNIQUE_LEVELS)) {
@@ -133,7 +144,7 @@ describe("levelForTechnique", () => {
   it("returns the table's level", () => {
     expect(levelForTechnique(1)).toBe(1); // Full House
     expect(levelForTechnique(3)).toBe(2); // Naked Single
-    expect(levelForTechnique(6)).toBe(3); // Locked Candidates
+    expect(levelForTechnique(6)).toBe(4); // Locked Candidates
     expect(levelForTechnique(36)).toBe(12); // Forcing Chains
     expect(levelForTechnique(49)).toBe(12); // Forcing Net
   });
@@ -158,8 +169,8 @@ describe("levelForBitmask", () => {
 
   it("returns the level of the hardest technique in the mask", () => {
     expect(levelForBitmask(bit(1) | bit(3))).toBe(2); // singles only
-    expect(levelForBitmask(bit(1) | bit(3) | bit(6))).toBe(3); // + locked candidates
-    expect(levelForBitmask(bit(3) | bit(24))).toBe(4); // + skyscraper
+    expect(levelForBitmask(bit(1) | bit(3) | bit(6))).toBe(4); // + locked candidates
+    expect(levelForBitmask(bit(3) | bit(24))).toBe(6); // + skyscraper
   });
 
   it("is exact for high technique ids, where a JS number would lose bits", () => {
@@ -168,16 +179,17 @@ describe("levelForBitmask", () => {
     // computed in bigint throughout.
     const mask = bit(1) | bit(60); // Full House + Grouped X-Cycles
     expect(mask).toBe(1152921504606846978n);
-    expect(levelForBitmask(mask)).toBe(10);
+    expect(levelForBitmask(mask)).toBe(11);
 
     expect(levelForBitmask(bit(3) | bit(36))).toBe(12); // Forcing Chains wins
-    expect(levelForBitmask(bit(3) | bit(56))).toBe(11); // Death Blossom wins
+    expect(levelForBitmask(bit(3) | bit(56))).toBe(12); // Death Blossom wins
   });
 
   it("takes the max, not the last or highest bit set", () => {
-    // Bit 56 (Death Blossom, L11) is a higher id than bit 36 (Forcing Chains,
-    // L12) but an easier level: the level must follow the table, not the id.
-    expect(levelForBitmask(bit(36) | bit(56))).toBe(12);
+    // Bit 60 (Grouped X-Cycles, L11) is a higher id than bit 36 (Forcing
+    // Chains, L12) but an easier level: the level must follow the table, not
+    // the id.
+    expect(levelForBitmask(bit(36) | bit(60))).toBe(12);
   });
 
   it("returns the minimum level for an empty mask", () => {

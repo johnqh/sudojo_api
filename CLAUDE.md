@@ -177,6 +177,14 @@ easier than the hardest step its solve needed. `src/lib/levels.test.ts` enforces
 this, that all 12 levels are non-empty, and that no technique sits below a
 technique it builds on.
 
+**Level shape (owner's decision, Sept 2026):** Full House is 1, the singles 2,
+Naked/Hidden Pair 3. Locked Candidates and Unique Rectangle Type 1 open level 4
+and score 13 in `sudojo_solver`, just above the pairs, so the invariant holds
+with no exemptions. Levels 4-12 are banded to even out boards per level. A score
+change is a `sudojo_solver` change (`GetDifficultyScore`, deploy it first): it
+alters the try-order, so boards' technique bitmasks change and the backfill
+must follow.
+
 **To change a technique's level:**
 
 1. Edit `TECHNIQUE_LEVELS` in `src/lib/levels.ts`.
