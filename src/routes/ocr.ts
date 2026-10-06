@@ -16,6 +16,10 @@ import {
 } from "@sudobility/sudojo_types";
 import { extractViaML, isOCRMLEnabled } from "../services/ocr-ml-proxy";
 import { extractViaPaddle, isPaddleEnabled } from "../services/ocr-paddle";
+import {
+  describeRecognizedDigits,
+  splitRecognizedDigits,
+} from "../lib/ocr-log";
 
 const ocrRouter = new Hono();
 
@@ -35,6 +39,11 @@ const FAILED =
 
 /** Shared validation of a backend's board before it goes out. */
 function validated(c: Context, data: OCRExtractData) {
+  // Log what was read (givens and player digits) before any rejection, so a
+  // scan that "lost" digits can be told apart from one the client mishandled.
+  for (const line of describeRecognizedDigits(data.engine ?? "unknown", data)) {
+    console.log(line);
+  }
   const puzzle = data.board.original;
   if (!puzzle || puzzle.length !== 81) {
     return c.json(
@@ -42,7 +51,13 @@ function validated(c: Context, data: OCRExtractData) {
       400
     );
   }
-  if (data.digitCount < MIN_CLUES) {
+  // Clients merge the player's digits into the givens, so the board they
+  // validate has both; gate on that total, not on the givens alone.
+  const split = splitRecognizedDigits(data);
+  const total = split
+    ? split.givenCount + split.userDigitCount
+    : data.digitCount;
+  if (total < MIN_CLUES) {
     return c.json(errorResponse(TOO_FEW_CLUES), 400);
   }
   return c.json(successResponse(data));
